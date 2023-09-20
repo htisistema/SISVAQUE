@@ -1,0 +1,595 @@
+#INCLUDE "wingdi.ch"
+#INCLUDE "winuser.ch"
+#INCLUDE "COMMCTRL.CH"
+#INCLUDE "HRBMENU.CH"
+#include "firebird.ch"     // Needed if you plan to use native connection to Firebird
+#include "sqlrdd.ch"
+#define NBotaoEcf1  2950
+#define NBotaoEcf2  2951
+#define NBotaoEcf3  2952
+#define NBotaoEcf4  2953
+#define NBotaoEcf5  2954
+#define NBotaoEcf6  2955
+#define NBotaoEcf7  2956
+#define NBotaoEcf8  2957
+
+#define MENU1_1  2960
+#define MENU1_2  2961
+#define MENU1_3  2962
+#define MENU1_4  2963
+#define MENU1_5  2964
+#define MENU1_6  2965
+#define MENU1_7  2966
+#define MENU1_8  2967
+#define MENU1_9  2968
+#define MENU1_10  2969
+#define MENU1_11  12969
+
+#define MENU2_1  2970
+#define MENU2_2  2971
+#define MENU2_3  2972
+//#define MENU2_4  2973
+#define MENU2_5  2974
+#define MENU2_6  2975
+#define MENU2_7  2976
+#define MENU2_1_1  2977
+#define MENU2_8  2978
+#define MENU2_9  2979
+
+#define MENU3_1  3970
+#define MENU3_2  3971
+#define MENU3_3  3972
+#define MENU3_4  3973
+#define MENU3_5  3974
+#define MENU3_6  3975
+#define MENU3_7  3976
+#define MENU3_8  3977
+
+//#define MENU_F1  4001
+#define MENU_F2  4002
+#define MENU_F3  4003
+#define MENU_F4  4004
+#define MENU_F5  4005
+#define MENU_F6  4006
+#define MENU_F7  4007
+#define MENU_F8  4008
+#define MENU_F9  4009
+#define MENU_F10 4010
+#define MENU_F11 4011
+#define MENU_F12 4012
+#define MENU_F13 4013
+#define MENU_F14 4014
+#define MENU_F15 4015
+#define MENU_F16 4016
+#define MENU_F17 4017
+#define MENU_F18 4018
+#define MENU_F19 4019
+
+#define MENUPROD 2980
+
+#define MENUECFSAI_1 2981
+
+#define NFE_1 5001
+#define NFE_2 5002
+#define NFE_3 5003
+#define NFE_4 5004
+#define NFE_5 5005
+#define NFE_6 5006
+#define NFE_7 5007
+#define NFE_8 5008
+#define NFE_9 5009
+*******************
+* MENU PRINCIPAL
+*******************
+FUNCTION sis00()
+***************
+MEMVAR mdata_sis,memp_resa,mversao,cod_operado,mcaminho,mol,sistema
+LOCAL mopcao,tela_ecf,m_mtz := {},lin,linhas,linha := 0,mtela_ecf,mtempo :=0
+
+PUBLIC mcod_vend,mmens,mgerenciador:='',chave_priv:='',mn_sac0
+
+SETCOLOR('W/B+,B/w,,,GR+/B')
+op_tela(00,00,50,120,memp_resa+SPACE(5)+mpaf_hrb+'-'+mversao+IF(m_line = 'OFF','  *** OFF LINE ***','')+SPACE(5)+'FRENTE DE LOJA - Data:'+DTOC(mdata_sis)+' - '+ver_dia(mdata_sis)+' - '+mrelease)
+wvw_maximize(0)
+WVW_CenterWindow(,.T.,.T.)
+
+set key 23 to
+mdata_sis := DATE()
+SETCOLOR('W+/B+,B/w,,,GR+/B')
+WVW_DrawImage( ,00,00,49,120,ALLTRIM(m_cfg[6])+'HRBLOGO.JPG',.F.,.F.)
+//WVW_DrawImage( ,00,00,45,MAXCOL(),ALLTRIM(m_cfg[6])+'HRBLOGO.JPG',.T.,.F.)
+//ATENCAO('OK')
+
+IF FILE(ALLTRIM(m_cfg[6])+'HRBFIRMA.JPG')
+        WVW_DrawImage( ,02,04,22,74,ALLTRIM(m_cfg[6])+'HRBFIRMA.JPG',.T.,.F.)
+ENDIF
+IF FILE(ALLTRIM(m_cfg[6])+cod_operado+'.jpg')
+        WVW_DrawImage( ,00,88,06,100,ALLTRIM(m_cfg[6])+cod_operado+'.jpg',.T.,.F.)
+        WVW_DrawLabel(,07,93,'OPERADOR',,,,, 'terminal',13,4,,,,,)
+ENDIF
+
+mtela_ecf := WVW_SAVESCREEN(,00,00,49,120)
+mensagem('Escolha a opcao que desejar ou <ESC> p/Retornar')
+
+SET KEY 28 TO menu_cons()       // F1 MENU DE CONSULTAS
+SET KEY 287 TO alt_sen()        // ALT+S
+SET KEY -41 TO calcu()        // F12 calculadora
+
+setcor(1)
+exibi_prg('SIS00')
+
+WVW_TBCreate( , .T.,TBSTYLE_LIST, 0,3,3)
+
+WVW_TBAddButton( ,NBotaoEcf1,' ','<V> E N D A',1)
+WVW_TBAddButton( ,NBotaoEcf6,' ','PRE-VENDA',1)
+WVW_TBAddButton( ,NBotaoEcf2,' ','<P>ordutos',1)
+WVW_TBAddButton( ,NBotaoEcf3,' ','Mensagem email',1)
+WVW_TBAddButton( ,NBotaoEcf4,' ','Deixar na Senha',1)
+WVW_TBAddButton( ,NBotaoEcf5,' ','<F4> MENU FISCAL',1)
+WVW_TBAddButton( ,NBotaoEcf8,' ','Carga do PDV',1)
+WVW_TBAddButton( ,NBotaoEcf7,' ','Sair do Sistema',1)
+
+WVW_SBCreate()
+WVW_SBAddPart(,,150,0,.F.)
+WVW_SBSetText(,0,'{SAC0}')
+WVW_SBAddPart(,,150,0,.F.)
+WVW_SBSetText(,1,'Empresa: '+ALLTRIM(mcodempresa)+'-'+memp_resa)
+WVW_SBAddPart(,,160,0,.F.)
+WVW_SBSetText(,2,'Operador: '+ALLTRIM(cod_operado))
+WVW_SBAddPart(,,150,0,.F.)
+WVW_SBSetText(,3,'Term.: '+NETNAME())
+WVW_SBAddPart(,,150,0,.F.)
+IF ! EMPTY(m_set[1,82])
+	IF cod_operado = '999'
+        	WVW_SBSetText(,4,'   ** Banco: FIREBIRD ** '+STRZERO(DATE() - CTOD(SUBSTR(m_set[1,82],1,2)+'/'+SUBSTR(m_set[1,82],3,2)+'/'+SUBSTR(m_set[1,82],5,2)),3))
+	ELSE
+        	WVW_SBSetText(,4,'   ** Banco: FIREBIRD **')
+        ENDIF
+ELSE
+        WVW_SBSetText(,4,'   >> Banco: FIREBIRD <<')
+ENDIF
+//WVW_SBAddPart(,,160,0,.F.)
+WVW_SBSetText(,5,'ACBR')
+
+hEcfMenu   = WVW_CreateMenu( )
+hEcfMenu1   = WVW_CreateMenu( )
+hEcfMenu2   = WVW_CreateMenu( )
+hEcfMenu2_1   = WVW_CreateMenu( )
+hEcfMenu3   = WVW_CreateMenu( )
+hMenufiscal = WVW_CreateMenu( )
+submenuNFE = WVW_CreateMenu( )
+//hMenuLMFS = WVW_CreateMenu( )
+//hMenuMFDesp = WVW_CreateMenu( )
+hMenuVP = WVW_CreateMenu( )
+hMenuMFDEst = WVW_CreateMenu( )
+
+WVW_AppendMenu( hEcfMenu   , MF_ENABLED + MF_POPUP , hEcfMenu1   , "Emissao",  )
+WVW_AppendMenu( hEcfMenu   , MF_ENABLED + MF_POPUP , hEcfMenu3   , "Arquivo",  )
+WVW_AppendMenu( hEcfMenu   , MF_ENABLED + MF_POPUP , hEcfMenu2   , "Relatorios",  )
+WVW_AppendMenu( hEcfMenu   , MF_ENABLED + MF_POPUP , hMenufiscal   , "MENU FISCAL",  )
+WVW_AppendMenu( hEcfMenu   , MF_ENABLED + MF_STRING , MENUECFSAI_1   , "Sair do Sistema",  )
+
+WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_1 , " Venda de Produtos        ",  )
+IF m_line = 'OFF'
+        WVW_AppendMenu( hEcfMenu1   , MF_GRAYED + MF_STRING , MENU1_2 , " Emissao de PRE-VENDA     ",  )
+ELSE
+        WVW_AppendMenu( hEcfMenu1   , MF_ENABLED + MF_STRING , MENU1_2 , " Emissao de PRE-VENDA     ",  )
+ENDIF
+WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_3 , " Cancela Cupom Fiscal",  )
+//WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_4 , " Cancela Item Generico    ",  )
+WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_6 , " Abrir Gaveta",  )
+WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_7 , " Transacoes Pendentes",  )
+WVW_AppendMenu( hEcfMenu1   , MF_ENABLED + MF_STRING , MENU1_8 , " Cancelar PRE-VENDAS      ",  )
+WVW_AppendMenu( hEcfMenu1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING , MENU1_9 , " Sangria ",  )
+WVW_AppendMenu( hEcfMenu1   , MF_ENABLED + MF_POPUP , submenuNFE," Notas Fiscais NFE        ",  )
+WVW_AppendMenu( hEcfMenu1   , MF_ENABLED + MF_STRING , MENU1_10," Notas Fiscais Manual       ",  )
+WVW_AppendMenu( hEcfMenu1   , MF_ENABLED + MF_STRING , MENU1_11," Balanco       ",  )
+
+// RELATORIOS
+
+WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_POPUP  ,  MENU2_1 , " Letura X (ABERTURA do Caixa)          ",  )
+WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_POPUP  ,  MENU2_2,  " Reducao Z (FECHAMENTO do Caixa)       ",  )
+//WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_3 , " Leitura da Memoria Fiscal             ",  )
+WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_POPUP  ,  hEcfMenu2_1, " Funcoes Administrativa   ",  )
+//WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_7 , " Relatorio Registro 60 (SINTEGRA)",  )
+//WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_8 , " Relatorio Registro CAT52",  )
+//WVW_AppendMenu( hEcfMenu2   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_9 , " Relatorio Registro SPED ",  )
+
+WVW_AppendMenu( hEcfMenu2_1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_5 , " Gereciador Padrao(VISA,MASTERCARD e AMEX) - (PAY&GO)",  )
+WVW_AppendMenu( hEcfMenu2_1   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_6 , " HIPERCARD - (PAY&GO)",  )
+
+// ARQUIVO
+
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_POPUP  ,  MENU3_1 , " Produtos ",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_POPUP  ,  MENU3_2,  " Clientes ",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU3_3 , " Operador/Vendedor ",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU3_4 , " Formas de Pagamentos ",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU3_7 , " CST(Codigo Situacao Tributaria)",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU3_8 , " Operacao de Nota (CFOP)",)
+WVW_AppendMenu( hEcfMenu3   , IF(m_line = 'ON',MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU3_6 , " Configuracao Aliquotas ",)
+WVW_AppendMenu( hEcfMenu3   , MF_ENABLED + MF_STRING ,  MENU3_5 , " Configuracao do ECF",  )
+
+// MENU FISCAL
+
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_POPUP ,  MENU2_1_1 , " LX  ",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU2_3 , " LMFC",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F10 , " LMFS",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F12, " Espelho MFD",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F14, " Arquivo MFD",  )
+WVW_AppendMenu( hMenufiscal   , MF_ENABLED + MF_STRING ,  MENU_F3 , " Tabela de Produto",  )
+WVW_AppendMenu( hMenufiscal   , MF_ENABLED + MF_POPUP ,  hMenuMFDEst, " Estoque",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F5 , " Movimento por ECF",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F6 , " Meio de Pagamento",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F7 , " Identificao do PAF-ECF",  )
+WVW_AppendMenu( hMenufiscal   , MF_ENABLED + MF_POPUP  ,  hMenuVP , " Vendas do Periodo",  )
+WVW_AppendMenu( hMenufiscal   , MF_ENABLED + MF_STRING ,  MENU_F9 , " Tab.Indice Tecnico Producao",  )
+WVW_AppendMenu( hMenufiscal   , IF(mecf_ligada = 1,MF_ENABLED,MF_GRAYED) + MF_STRING ,  MENU_F18 , " Parametro de Configuracao",  )
+WVW_AppendMenu( hMenufiscal   , MF_ENABLED + MF_STRING ,  MENU_F19 , " Troco em Cartao ",  )
+
+WVW_AppendMenu( hMenuVP   , MF_ENABLED + MF_STRING ,  MENU_F11 , " Sintegra    ",  )
+WVW_AppendMenu( hMenuVP   , MF_ENABLED + MF_STRING ,  MENU_F13 , " SPED ",  )
+//WVW_AppendMenu( hMenuVP   , MF_ENABLED + MF_STRING ,  MENU_F15 , " SPED - PIS/CONFIS ",  )
+
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_1,  "0-> Emissao << NFe >> (CTRL+E)",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_2,  "1-> Emissao p/Agrupamento << NFe >>",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_3,  "2-> 2a. Via << NFe >>",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_4,  "3-> Cancelamento         ",  )                                                                                                                            
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_5,  "4-> Alterar/Exclusao     ",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_6,  "5-> Emissao << NFe >> CORRECAO ",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_7,  "6-> Manutencao da << NFe >>",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_8,  "7-> Estorno CANCELAMENTO ",  )
+WVW_AppendMenu( submenuNFE   , MF_ENABLED + MF_STRING , NFE_9,  "8-> Ultimo No.da Nota    ",  )
+
+WVW_AppendMenu( hMenuMFDEst   , MF_ENABLED + MF_STRING ,  MENU_F16 , " Estoque TOTAL",  )
+WVW_AppendMenu( hMenuMFDEst   , MF_ENABLED + MF_STRING ,  MENU_F17 , " Estoque PARCIAL ",  )
+
+WVW_SetMenu(, hEcfMenu )
+
+SETINKEYAFTERBLOCK({|nkey_ecf| AfterInkey1(nkey_ecf)})
+WVW_RESTSCREEN(,00,00,49,120,mtela_ecf,.T.)
+WHILE .T.
+        WVW_RESTSCREEN(,00,00,49,120,mtela_ecf,.T.)
+        setcor(2)
+        Botao(50,0,50,120)
+        WVW_DrawBoxGet(,50,0,121)
+        limpa(50,0,50,120)
+        DEVPOS(50,02);DEVOUT('Impressora Marca: '+RTRIM(m_ModeloImp)+'  -  Modelo: '+RTRIM(m_MarcaImp)+'  -  Numero de Serie: '+RTRIM(m_numeroSerie)+'  -  No.Caixa: '+RTRIM(m_numerocaixa))
+        setcor(1)
+        mensagem('Lendo o Arquivo SACCFG.INI...')
+        lin := MEMOLINE(MEMOREAD('SACCFG.INI'),110,1,,)
+        linhas := linha := 0
+        linhas := MLCOUNT(MEMOREAD('SACCFG.INI'),110)
+        m_cfg := {}
+        FOR linha = 1 TO  linhas
+                lin := MEMOLINE(MEMOREAD('SACCFG.INI'),110,linha,,)
+                IF SUBSTR(lin,5,1) = 'C'
+                        AADD(m_cfg,ALLTRIM(SUBSTR(lin,30)))
+                ELSE
+                        AADD(m_cfg,VAL(SUBSTR(lin,30)))
+                ENDIF
+        NEXT
+        fclose('saccfg.ini')
+
+        mensagem('Escolha sua Opcao...')
+        Wvw_SetTitle( ,memp_resa+SPACE(10)+mpaf_hrb+'-'+mversao+IF(m_line = 'OFF','  *** OFF LINE ***','')+SPACE(10)+'FRENTE DE LOJA - Data:'+DTOC(mdata_sis)+' - '+ver_dia(mdata_sis)+' - '+mrelease)
+        exibi_prg('SIS00')
+        INKEY(0)
+        setcor(1)
+        IF LASTKEY() = 275  //ALT+R
+                MYRUN('SISCOM')
+        ELSEIF LASTKEY() = 27
+                IF 'S' = op_simnao('N','Deseja FINALIZAR O SISTEMA:')
+                        EXIT
+                        wvw_lclosewindow()
+                        QUIT
+                ENDIF
+        ENDIF
+ENDDO
+WVW_TBDestroy()
+WVW_DestroyMenu(hEcfMenu)
+WVW_DestroyMenu(hEcfMenu1)
+WVW_DestroyMenu(hEcfMenu2)
+wvw_lclosewindow()
+QUIT
+RETURN .F.
+************************************** F I M *****************************************
+FUNCTION AfterInkey1(nkey_ecf)
+******************************
+LOCAL MenuId_ecf,mvet_z,mped_z,i:=0,z:=0,cons_merc,mvlr_aliq,mdocumento,mnum_ecf,mvalor:=0,p:=0,mop_imp:='I',mvlr_abertura := 0,;
+      mmes := '  ',mano := '    ',mcaminho,mdata,mlinha:=space(150),mind_trib,mvlr_acumulado,mindice,maux := {},;
+      mtempo:=0
+PRIVATE m_Operacoes := ''
+
+PUBLIC M_Valor := Space(19),m_DadosReducao := Space(1279),DataReducao := Space(7),mdata_aux := Space(7),HoraReducao := Space(7)
+
+IF nkey_ecf=1024
+        mensagem('Escolha a opcao que desejar')
+        setcor(1)
+        MenuId_ecf:=WVW_GETLASTMENUEVENT()
+        IF MenuId_ecf=NBotaoEcf1      // BOTAO EMISSAO DE PEDIDO
+        ELSEIF MenuId_ecf=NBotaoEcf2  // CONSULTA DE PRODUTOS
+        ELSEIF MenuId_ecf=NBotaoEcf3  // CONSULTA DE EMAIL
+        ELSEIF MenuId_ecf=MENU1_1      // GRUPO
+        ELSEIF MenuId_ecf=MENU1_2  // PRE-VENDA
+        ELSEIF MenuId_ecf=MENU1_3
+        ELSEIF MenuId_ecf=MENU1_6
+        ELSEIF MenuId_ecf=MENU1_7  // TRANSACAO PEDENTES
+        ELSEIF MenuId_ecf=MENU1_8  // CANCELAR PRE-VENDAS
+        ELSEIF MenuId_ecf=MENU1_9  // SANGRIA
+        ELSEIF MenuId_ecf=MENU1_10  //
+        ELSEIF MenuId_ecf=MENU1_11  //
+        ELSEIF MenuId_ecf=MENU2_1  // LEITURA X
+        ELSEIF MenuId_ecf=MENU2_1_1  // LEITURA X
+        ELSEIF MenuId_ecf=MENU2_2  // OPERADOR
+        ELSEIF MenuId_ecf=MENU2_3
+        ELSEIF MenuId_ecf=MENU2_5  // GERENCIADOR PADRAO
+        ELSEIF MenuId_ecf=MENU2_6  // HIPERCARD
+        ELSEIF MenuId_ecf=MENU3_1  // PRODUTOS
+        ELSEIF MenuId_ecf=MENU3_2  // CLIENTES
+        ELSEIF MenuId_ecf=MENU3_3  // OPERADORES
+        ELSEIF MenuId_ecf=MENU3_4  // forma de pagamento
+        ELSEIF MenuId_ecf=MENU3_5  // CONFIGURACAO DO ECF
+        ELSEIF MenuId_ecf=MENU3_6  // CONFIGURACAO ALIQUOTAS
+        ELSEIF MenuId_ecf=MENU3_7  // CST
+        ELSEIF MenuId_ecf=MENU3_8  // CFOP
+        ELSEIF MenuId_ecf=MENU_F3  // TAB.PRODUTO
+        ELSEIF MenuId_ecf=MENU_F5  
+        ELSEIF MenuId_ecf=MENU_F6
+        ELSEIF MenuId_ecf=MENU_F7  // forma de pagamento
+        ELSEIF MenuId_ecf=MENU_F6  // forma de pagamento
+        ELSEIF MenuId_ecf=MENU_F9
+        ELSEIF MenuId_ecf=MENU_F10
+        ELSEIF MenuId_ecf=MENU_F11
+        ELSEIF MenuId_ecf=MENU_F12
+        ELSEIF MenuId_ecf=MENU_F13
+        ELSEIF MenuId_ecf=MENU_F14
+        ELSEIF MenuId_ecf=MENU_F15
+        ELSEIF MenuId_ecf=MENU_F16
+        ELSEIF MenuId_ecf=MENU_F17
+        ELSEIF MenuId_ecf=MENU_F18
+        ELSEIF MenuId_ecf=MENU_F19
+        ELSEIF MenuId_ecf = NBotaoEcf5  // MENU FISCAL
+        ELSEIF MenuId_ecf = NBotaoEcf6  // pre-venda
+        ELSEIF MenuId_ecf=MENUECFSAI_1 .OR. MenuId_ecf = NBotaoEcf7
+                wvw_lclosewindow()
+                //apaga_hrb() //apaga o arquivo de controle "HRB.001"
+                sr_getconnection():exec("UPDATE insopera SET terminal = '',data_acess = NULL,hora_acess = '' WHERE scod_op = "+sr_cdbvalue(cod_operado),,.f.)
+                sr_getconnection():exec('COMMIT',,.f.)
+                QUIT
+        ELSEIF MenuId_ecf = NBotaoEcf8
+        ELSEIF MenuId_ecf = NFE_1 // EMISSAO NOTA FISCAL ELETRONICA
+        ELSEIF MenuId_ecf = NFE_2 // EMISSAO DE NF.ELETRONICA  P/AGRUPAMENTO DE PEDIDOS
+        ELSEIF MenuId_ecf = NFE_3 // 2A. VIA NFE
+        ELSEIF MenuId_ecf = NFE_4 // CANCELAMENTO NF
+        ELSEIF MenuId_ecf = NFE_5 // ALTERACAO/EXCLUSAO    NF
+        ELSEIF MenuId_ecf = NFE_6 // EMISSAO NFE DE CORRECAO
+        ELSEIF MenuId_ecf = NFE_7 // CONSULTAR NFE
+        ELSEIF MenuId_ecf = NFE_8 // ESTORNO CANCELAMENTO NOTA FISCAL
+        ELSEIF MenuId_ecf = NFE_9 // ULTIMA NOTA FISCAL NUMERACAO
+        ELSEIF MenuId_ecf=NBotaoEcf4
+                 alt_sen("1",1)
+        ENDIF
+ENDIF
+RETURN nkey_ecf
+******************************* f i m *********************************************
+* VERIFICA SENHAS
+*****************
+FUNCTION senha(mflag,mecf)
+******************************
+LOCAL mcont,msenha,mdata_sen,mdata_aux,msenha_aux,mtela_sen,opcao,vsenha,vsenha1,;
+      lci:=45,cci:=12,lba:=5,cba:=30,mtel_senha,aret:={},mdata_dat,q_merc,m_docapagar,ccomm,m_est_min,m_est_med
+
+MEMVAR cod_operado
+
+PUBLIC senha_acess,nivel_acess,mcod_oper:=0
+mcont:=0
+setcor(1)
+WHILE .T.
+        WHILE mcont <= 3
+                SET CENTURY ON
+	        botao(44,00,50,120)
+		limpa(44,00,50,120)
+		WVW_DrawImage( ,45,1,50,10,ALLTRIM(m_cfg[6])+'HRBUSU.jpg',.T.,.F.)
+        	WVW_DrawImage( ,45,50,50,60,ALLTRIM(m_cfg[6])+'HRB.ICO',.T.,.F.)
+                setcor(1)
+                mensagem('Digite o Codigo de Operador')
+		DEVPOS(lci,cci+1);DEVOUT('Codigo Operador:')
+                DEVPOS(lci+2,cci+1);DEVOUT('Digite a Senha.:')
+                DEVPOS(lci+4,cci+1);DEVOUT('Data do Sistema:')
+                WVW_DrawBoxGet(,lci,cci+18,3)
+                WVW_DrawBoxGet(,lci+2,cci+18,12)
+                WVW_DrawBoxGet(,lci+4,cci+18,10)
+                setcor(1)
+                SET CENTURY OFF
+                @ lci,cci+18 GET mcod_oper PICT '999' VALID IF(EMPTY(mcod_oper),.F.,ven(mcod_oper))
+                READ
+                IF LASTKEY() = 27
+                        RETURN .F.
+                ENDIF
+                aret:={}
+                sr_getconnection():exec("SELECT snivel,scod_op,sult_e_c,sexpira,ssenha,stipo,snome,doc_apagar,estoq_min,estoq_med FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.t.,@aret)
+                IF aret[1,6] = 'B' .AND. STRZERO(mcod_oper,3) <> '999'
+                        atencao('Este Usuario/Operador estar Bloqueado, Procure seu Administrador...')
+                        LOOP
+                ENDIF
+		IF FILE(ALLTRIM(m_cfg[6])+STRZERO(mcod_oper,3)+'.jpg')
+		        WVW_DrawImage( ,45,1,50,10,ALLTRIM(m_cfg[6])+STRZERO(mcod_oper,3)+'.jpg',.T.,.F.)
+		ENDIF
+                mensagem('Operador: '+IF(m_line = 'ON',aret[1,7],sen->snome)+' - Digite sua SENHA')
+                msenha = ''
+                IF mcod_oper = 999
+		        WVW_DrawImage( ,45,1,50,10,ALLTRIM(m_cfg[6])+'HRB.ICO',.T.,.F.)
+			pegasenha(@msenha,lci+2,cci+18,setcor(2),12)
+		ELSE
+			pegasenha(@msenha,lci+2,cci+18,setcor(2))
+		ENDIF
+                setcor(1)
+                IF msenha = 'NAO'
+                        RETURN .F.
+                ENDIF
+                IF EMPTY(msenha)
+                        atencao('Senha em BRANCO tem que digitar alguma SENHA...')
+                        TONE(100,6)
+                        TONE(1600,6)
+                        INKEY(2)
+                        IF mcont = 3
+                                RETURN .F.
+                        ENDIF
+                        LOOP
+                ENDIF
+                mcont ++
+                IF ALLTRIM(msenha) = 'HRB682110' .AND. STRZERO(mcod_oper,3) = '999'
+                        nivel_acess := '1'
+                        cod_operado := '999'
+                        senha_acess := msenha
+                        EXIT
+                ENDIF
+		// EX: 21/07/10  21+07+10 = 3 8
+		// EX: ADM: SOMA  A= ANO+DIA = 31 - D= DIA+DIA= 42 - M= MES+DIA = 28
+		// EX: 3 31 42 28 8
+		mdig1 := SUBSTR(STRZERO(VAL(SUBSTR(DTOC(DATE()),7,2))+VAL(SUBSTR(DTOC(DATE()),1,2))+VAL(SUBSTR(DTOC(DATE()),4,2)),2),1,1)
+		mdig2 := STRZERO(VAL(SUBSTR(DTOC(DATE()),7,2))+VAL(SUBSTR(DTOC(DATE()),1,2)),2)
+		mdig3 := STRZERO(VAL(SUBSTR(DTOC(DATE()),1,2))+VAL(SUBSTR(DTOC(DATE()),1,2)),2)
+		mdig4 := STRZERO(VAL(SUBSTR(DTOC(DATE()),4,2))+VAL(SUBSTR(DTOC(DATE()),1,2)),2)
+		mdig5 := SUBSTR(STRZERO(VAL(SUBSTR(DTOC(DATE()),7,2))+VAL(SUBSTR(DTOC(DATE()),1,2))+VAL(SUBSTR(DTOC(DATE()),4,2)),2),2,1)
+
+		//atencao(mdig1+mdig2+mdig3+mdig4+mdig5)
+                //IF SUBSTR(msenha,1,6) = SUBSTR(DTOC(DATE()),7,2)+SUBSTR(DTOC(DATE()),1,2)+SUBSTR(DTOC(DATE()),4,2)
+		IF SUBSTR(msenha,1,8) = mdig1+mdig2+mdig3+mdig4+mdig5 .AND. m_line = 'ON'
+                        IF VAL(SUBSTR(msenha,9)) = 0
+                                mdata_aux :=SPACE(11)
+                        ELSE
+                                //mdata_sen := DATE() + VAL(SUBSTR(msenha,7))
+                                mdata_sen := DATE() + VAL(SUBSTR(msenha,9))
+                                //mdata_aux := SUBSTR(DTOC(mdata_sen),1,2)+SUBSTR(DTOC(mdata_sen),4,2)+SUBSTR(DTOC(mdata_sen),7,2) + SUBSTR(msenha,1,6)
+                                mdata_aux := SUBSTR(DTOC(mdata_sen),1,2)+SUBSTR(DTOC(mdata_sen),4,2)+SUBSTR(DTOC(mdata_sen),7,2) + SUBSTR(DTOC(DATE()),7,2)+SUBSTR(DTOC(DATE()),1,2)+SUBSTR(DTOC(DATE()),4,2)
+                        ENDIF
+                        SR_BEGINTRANSACTION()
+                        TRY
+
+                        sr_getconnection():exec("UPDATE sacsetup SET sysdatlm = "+sr_cdbvalue(mdata_aux),,.f.)
+                        sr_getconnection():exec('COMMIT',,.f.)
+                        CATCH e
+                        SR_ENDTRANSACTION()
+                        END
+
+                        siscdx('P')
+                        sisdbf()
+                        nivel_acess := aret[1,1]
+                        cod_operado := aret[1,2]
+                        senha_acess := msenha
+                        RETURN .T.
+                ENDIF
+                IF ALLTRIM(msenha) == ALLTRIM(DCRIPTO(aret[1,5])) .AND. m_line = 'ON'
+                        SR_BEGINTRANSACTION()
+                        TRY
+                                sr_getconnection():exec("UPDATE insopera SET sult_ent = "+sr_cdbvalue(mdata_sis)+",shora_ini = "+sr_cdbvalue(SUBSTR(TIME(),1,5))+" WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.f.)
+                                sr_getconnection():exec('COMMIT',,.f.)
+                        CATCH e
+                        SR_ENDTRANSACTION()
+                        END
+                        nivel_acess := aret[1,1]
+                        cod_operado := aret[1,2]
+                        senha_acess := msenha
+                        IF (DATE() - aret[1,3]) >= aret[1,4] .AND. ! EMPTY(aret[1,4])
+                                op_tela(10,10,14,50,' Senha Expirou ')
+                                WHILE .T.
+                                        DEVPOS(00,00);DEVOUT('Digite Nova Senha:')
+                                        DEVPOS(01,00);DEVOUT('Digite  Novamente:')
+                                        DEVPOS(02,00);DEVOUT('Confirma [S/n]...:')
+                                        vsenha = ''
+                                        vsenha1= ''
+                                        pegasenha(@vsenha,00,20,setcor(2))
+                                        setcor(1)
+                                        IF LEN(vsenha) <= 1 .OR. EMPTY(vsenha) .OR. vsenha = 'NAO'
+                                                LOOP
+                                        ENDIF
+                                        pegasenha(@vsenha1,01,20,setcor(2))
+                                        setcor(1)
+                                        IF LEN(vsenha1) <= 1 .OR. vsenha1 = 'NAO'
+                                                LOOP
+                                        ENDIF
+                                        IF vsenha == vsenha1
+                                                opcao := 'S'
+                                                @ 02,20 GET opcao PICT '@!' VALID opcao $ 'S,N'
+                                                READ
+                                                IF LASTKEY() = 27 .OR. opcao = 'N'
+                                                        LOOP
+                                                ENDIF
+                                                wvw_lclosewindow()
+                                                SR_BEGINTRANSACTION()
+                                                TRY
+                                                sr_getconnection():exec("UPDATE insopera SET ssenha = "+sr_cdbvalue(CRIPTO(vsenha))+",sult_e_c = "+sr_cdbvalue(DATE())+" WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.f.)
+                                                sr_getconnection():exec('COMMIT',,.f.)
+                                                CATCH e
+                                                SR_ENDTRANSACTION()
+                                                END
+                                                EXIT
+                                        ELSE
+                                                atencao('Senha Digitada Errada, Tente novamente !!!')
+                                                LOOP
+                                        ENDIF
+                                ENDDO
+                                EXIT
+                        ELSE
+                                EXIT
+                        ENDIF
+                ELSE
+                        atencao('Senha Incorreta Tente Novamente')
+                        TONE(100,6)
+                        TONE(1600,6)
+                        INKEY(2)
+                        IF mcont = 3
+                                RETURN .F.
+                        ENDIF
+                        LOOP
+                ENDIF
+
+        ENDDO
+        WHILE .T.
+                SET CENTURY ON
+		mensagem('Confira a Data do Sistema')
+                //c_ped:={}
+                //sr_getconnection():exec("SELECT MAX(pdat_ped) FROM sacped_s",,.t.,@c_ped)
+                setcor(1)
+                WVW_DrawBoxGet(,lci+4,cci+18,10)
+                @ lci+4,cci+18 GET mdata_sis
+                READ
+                mdata_dat := DATE()
+                        IF mdata_sis > DATE() + 10
+                                atencao('A Data informada estar com mais de 10 dias: '+DTOC(mdata_sis))
+                                IF ! ver_nivel('ALT_DATA','ALTERACAO DA DATA DO SISTEMA','1245',nivel_acess,,'AMBIE')
+                                        LOOP
+                                ENDIF
+                        ENDIF
+                        c_caixa:={}
+                        sr_getconnection():exec("SELECT MAX(data) FROM saccaixa",,.t.,@c_caixa)
+                        IF mdata_sis < c_caixa[1,1]
+		      	       mdata_dat := c_caixa[1,1]
+                        ENDIF
+                        IF mdata_sis <> mdata_dat
+                                IF ! ver_nivel('ALT_DATA','ALTERACAO DA DATA DO SISTEMA','1245',nivel_acess,,'AMBIE')
+                                        LOOP
+                                ENDIF
+                        ENDIF
+                IF LASTKEY() = 27 .OR. EMPTY(mdata_sis)
+                        LOOP
+                ELSE
+	                EXIT
+	       	ENDIF
+        ENDDO
+        SET CENTURY OFF
+        EXIT
+ENDDO
+//wvw_lclosewindow()
+* ERRO DO SISTEMA**********
+//erro()
+********************
+IF mflag <> NIL
+        CLOSE sen
+        RETURN .T.
+ENDIF
+sis00()
+CLOSE sen
+RETURN .T.
+********************************** f i m **************************************

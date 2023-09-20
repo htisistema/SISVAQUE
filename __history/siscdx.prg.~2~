@@ -1,0 +1,48 @@
+***************************************
+***************************************
+* DESPROTEGER E VERIFICA O COMPUTADOR
+***************************************
+MEMVAR mcaminho
+
+FUNCTION siscdx(indexar,mfile)
+************
+LOCAL mprg:='SISCDX'
+PRIVATE lci:=01,cci:=00,lba:=25,cba:=80,;
+        cor,matriz :={},i:=0,opcao:=' ',mcont:=0,mcont1:=0,malias,;
+        mreindex,mqtd_ind:=0
+RGB(240,249,144)
+IF indexar = 'P'
+        setcor(1)
+        op_tela(09,10,13,91,'VERIFICANDO INTEGRIDADE DAS TABELAS','1')
+        aret := {}
+        AADD(aret,{02,01,03,80})
+        i:=0
+        FOR i = 1 TO 100
+                DEVPOS(00,39);DEVOUT(TRANSFORM(i,'999')+' %')
+                WVW_DrawProgressBar( ,02,01,03,80,aret,i,102,155,,.f.,0 )
+                INKEY(.1)
+                IF LASTKEY() = 27
+                        EXIT
+                ENDIF
+        NEXT
+        wvw_lclosewindow()
+        sr_getconnection():exec("UPDATE insopera SET terminal = '',data_acess = NULL,hora_acess = '' WHERE scod_op = "+sr_cdbvalue(cod_operado),,.f.)
+        sr_getconnection():exec('COMMIT',,.f.)
+        QUIT
+ELSE
+        op_tela(10,01,13,99,' I N D E X A C A O    D O S    A R Q U I V O S ','1')
+ENDIF
+mqtd_ind := 0
+DEVPOS(lci,1);DEVOUT('02> INSOPERA =>'+SPACE(90));DEVPOS(1,1);DEVOUT(SPACE(105))
+IF ! SR_EXISTINDEX('insopera') .OR. (indexar <> NIL .AND. mfile = NIL) .OR. mfile = 'insopera'
+        IF ! AbriArq('insopera','sen','E');RETURN NIL;wvw_lclosewindow();ENDIF
+        INDEX ON sen->snome TAG senha TO ('insopera')
+        INDEX ON sen->scod_op TAG codop TO ('insopera')
+        sen->(DBCLOSEAREA())
+ENDIF
+**********************************************************************************************
+**********************************************************************************************
+CLOSE ALL
+wvw_lclosewindow()
+RETURN .T.
+

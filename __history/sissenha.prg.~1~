@@ -1,0 +1,666 @@
+*********************************************************
+FUNCTION sacsenha(mop)
+**********************
+LOCAL mprg:='SACSENHA',;
+      f7tela,f7tela1,f7lci,f7cci,f7lba,f7cba,f7msele,f7morde,f7men,;
+      oconsprod,ocolprod[13],f7i,f7nkey,f7opcao,tela1,opcao,mreg,li,ci,lb,cb,;
+      mnome := SPACE(30),vsenha1:='',vsenha := '',vnivel1 := SPACE(1),vnivel2 := SPACE(1),;
+      mcomissao := 0,mcom_praz := 0,mcom_oper := 0,mcota := 0,mdata_cad,msituacao,;
+      mcod_ven,mult_alt,mexpira,vtipo,vtipo_sis,vsen_atual:='',mdoc_apagar:=' ',mestoq_min:=' ',mestoq_med:=0,;
+      mcons_inso:={},memail:=SPACE(60),mdat_aniv:=''
+
+MEMVAR mcod_vend
+
+IF ! ver_nivel(mprg,'MENU DE SENHAS','15',nivel_acess,,'AMBIE')
+        RETURN NIL
+ENDIF
+setcor(1)
+mcod_vend := f7lci := f7cci := 0
+f7lba := 24
+f7cba := 120
+li := ci := 0
+lb := 15
+cb := 52
+
+op_tela(05,0,29,120,memp_resa+SPACE(50)+" Cadastro de Operadores / Outros ",,'*')
+
+f7msele := SELE()
+f7morde := INDEXORD()
+***********************************************
+IF ! AbriArq('insopera','sen');RETURN NIL;ENDIF
+SELE('sen');ORDSETFOCUS(2)
+GO TOP
+***********************************************
+oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+f7i:=0
+FOR f7i=1 TO LEN(ocolprod)
+        oconsprod:ADDCOLUMN(ocolprod[f7i])
+NEXT
+oconsprod:HEADSEP := CHR(196)
+oconsprod:COLSEP := CHR(179)
+WHILE .T.
+        exibi_prg(mprg)
+        IF mop = '*'
+                mensagem('<P>esquisa <I>nclusao <ENTER>p/Alterar e Excluir <ESC>Retornar')
+        ELSE
+                mensagem('<PGUP> <PGDN> <P>esquisa <I>nclusao <ENTER> Conf. <ESC>Retornar')
+        ENDIF
+        f7nkey := 0
+        WHILE f7nkey == 0         //.AND. ! oconsprod:STABLE
+                oconsprod:FORCESTABLE()
+                f7nkey := INKEY(0)
+        ENDDO
+        IF f7nkey == K_ESC
+                mcod_vend := 0
+                EXIT
+        ELSEIF f7nkey = 73 .OR. f7nkey = 105
+                IF ! ver_nivel(mprg,'INCLUSAO DE OPERADORES','1',nivel_acess,,'AMBIE')
+                        wvw_lclosewindow()
+                        RETURN NIL
+                ENDIF
+                op_tela(10,10,31,95,' Inclusao ')
+                WHILE .T.
+                        mcons_inso := {}
+                	sr_getconnection():exec("SELECT * FROM insopera WHERE NOT scod_op = '999' AND NOT scod_op = '111' ORDER BY scod_op",,.t.,@mcons_inso)
+                        IF LEN(mcons_inso) = 0
+                                mcod_vend = 1
+                        ELSE
+                                mcod_vend = VAL(mcons_inso[LEN(mcons_inso),1]) + 1
+                        ENDIF
+                        mnome = SPACE(30)
+                        vsenha = ''
+                        vnivel1 := vnivel2 := vtipo := vtipo_sis := SPACE(1)
+                        mcomissao := mcom_praz := mcom_oper := mcota := mexpira := mestoq_med:=0
+                        opcao = 'S'
+			mdoc_apagar := mestoq_min := mdat_aniv:=' '
+
+                        setcor(3)
+                        @ li+5,ci TO li+5,120
+                        janela(li+5,ci,' Comissao do Vendedor ','*','*')
+                        @ li+7,ci TO li+7,120
+                        janela(li+7,ci+1,' Comissao do Operador ','*','*')
+                        @ li+9,ci TO li+9,120
+                        setcor(1)
+                        mensagem('Preencha os Campos - <ESC> p/Retornar')
+                        DEVPOS(li+1,ci+2);DEVOUT('Cod.Operador..:')
+                        DEVPOS(li+2,ci+2);DEVOUT('Nome..........:')
+                        DEVPOS(li+3,ci+2);DEVOUT('Tipo..........:')
+                        DEVPOS(li+3,ci+21);DEVOUT('Modulo:')
+                        DEVPOS(li+4,ci+2);DEVOUT('Nivel.........:   e  ')
+                        DEVPOS(li+6,ci+2);DEVOUT('Comissao (%)..:')
+                        DEVPOS(li+6,ci+24);DEVOUT('Comissao Aprazo (%):')
+                        DEVPOS(li+8,ci+2);DEVOUT('Comissao (%)..:')
+                        DEVPOS(li+10,ci+2);DEVOUT('Cota R$.......:')
+                        DEVPOS(li+11,ci+2);DEVOUT('Data..........:')
+                        DEVPOS(li+12,ci+2);DEVOUT('SENHA.........:')
+                        DEVPOS(li+13,ci+2);DEVOUT('Confirma SENHA:')
+                        DEVPOS(li+14,ci+2);DEVOUT('Qtd.dias Expira Senha..........:')
+                        DEVPOS(li+15,ci+2);DEVOUT('Alerta Documento Apagar........:')
+                        DEVPOS(li+16,ci+2);DEVOUT('Alerta Estoque Abaixo do Minimo:')
+                        DEVPOS(li+17,ci+2);DEVOUT('Alerta Estoque Media por Dias..:')
+                        DEVPOS(li+18,ci+2);DEVOUT('Alerta Clientes Aniversarios...:')
+                        DEVPOS(li+19,ci+2);DEVOUT('Digite o Email.................:')
+                        @ li+1,ci+18 GET mcod_vend PICT '999' VALID IF(EMPTY(mcod_vend),.F.,.T.)
+                        READ
+                        IF LASTKEY() = 27
+                                EXIT
+                        ENDIF
+                        mcons_inso := {}
+                	sr_getconnection():exec("SELECT * FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_vend,3)),,.t.,@mcons_inso)
+                        IF LEN(mcons_inso) > 0
+                                atencao('Codigo ja Existe no cadastro !!!')
+                                LOOP
+                        ENDIF
+                        setcor(3)
+                        mdata_cad = mdata_sis
+                        DEVPOS(li+1,ci+18);DEVOUT(STRZERO(mcod_vend,3))
+                        DEVPOS(li+10,ci+18);DEVOUT(mdata_cad)
+                        setcor(1)
+                        @ li+2,ci+18 GET mnome PICT '@!'
+                        @ li+3,ci+18 GET vtipo PICT '@!' VALID vtipo $ 'O,V,G,A,B' .AND. lim_get() WHEN men_get(li+4,ci,'[O]perador - [V]endedor - [G]erente - [A]dministrador - [B]loqueado')
+                        @ li+3,ci+28 GET vtipo_sis PICT '@!' VALID vtipo_sis $ 'S,V,C,M' .AND. lim_get() WHEN men_get(li+4,ci,'[S]iscom - [V]enda - [C]aixa - [M]Caixa/Venda')
+                        @ li+4,ci+18 GET vnivel1 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+                        @ li+4,ci+22 GET vnivel2 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+                        @ li+6,ci+18 GET mcomissao PICT '99.99'
+                        @ li+6,ci+45 GET mcom_praz PICT '99.99'
+                        @ li+8,ci+18 GET mcom_oper PICT '99.99'
+                        @ li+10,ci+18 GET mcota PICT '99,999,999.99'
+                        READ
+                        IF LASTKEY() = 27
+                                LOOP
+                        ENDIF
+                        WHILE .T.
+                                vsenha := vsenha1 := ''
+                                mensagem('Digite sua Senha')
+                                pegasenha(@vsenha,li+12,ci+18,setcor(2))
+                                setcor(1)
+                                IF LEN(vsenha) <= 1 .OR. EMPTY(vsenha)
+                                        LOOP
+                                ENDIF
+                                IF vsenha = 'NAO'
+                                        EXIT
+                                ENDIF
+                                mensagem('Digite Novamente sua Senha')
+                                pegasenha(@vsenha1,li+13,ci+18,setcor(2))
+                                setcor(1)
+                                IF LEN(vsenha1) <= 1
+                                        LOOP
+                                ENDIF
+                                IF vsenha1 = 'NAO'
+                                        EXIT
+                                ENDIF
+				mdoc_apagar := mestoq_min := ' '
+
+                                WVW_DrawBoxGet(,li+14,ci+25,3)
+                                @ li+14,ci+35 GET mexpira PICT '999'
+                                @ li+15,ci+35 GET mdoc_apagar PICT '@!' VALID mdoc_apagar $ ' ,X' .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+                                @ li+16,ci+35 GET mestoq_min PICT '@!' VALID mestoq_min $ ' ,X'   .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+                                @ li+17,ci+35 GET mestoq_med PICT '999'
+                                @ li+18,ci+35 GET mdat_aniv PICT '@!' VALID mdat_aniv $ ' ,X' .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+                                @ li+19,ci+35 GET memail PICT '@S50'
+                                READ
+                                IF vsenha == vsenha1
+                                        opcao := op_simnao('S','Confirma a Inclusao do Operador:')
+                                        IF opcao = 'N'
+                                                EXIT
+                                        ELSE
+                                                sr_getconnection():exec('INSERT INTO insopera ('+;
+                                                        'scod_op,'+;
+                                                        'stipo,'+;
+                                                        'stipo_sis,'+;
+                                                        'snome  ,'+;
+                                                        'ssenha      ,'+;
+                                                        'sdata_cad ,'+;
+                                                        'snivel ,'+;
+                                                        'scomissao     ,'+;
+                                                        'scom_oper     ,'+;
+                                                        'scom_praz,'+;
+                                                        'scota,'+;
+                                                        'sult_e_c,'+;
+                                                        'sexpira,'+;
+                                                        'doc_apagar,'+;
+                                                        'estoq_min,'+;
+                                                        'estoq_med,'+;
+                                                        'email,'+;
+                                                        'dat_aniv,'+;
+                                                        'SR_DELETED )'+;
+                                                        ' VALUES ('+;
+                                                        sr_cdbvalue(STRZERO(mcod_vend,3))+','+; //1
+                                                        sr_cdbvalue(vtipo)+','+; //2
+                                                        sr_cdbvalue(vtipo_sis)+','+; //3
+                                                        sr_cdbvalue(mnome)+','+; //4
+                                                        sr_cdbvalue(CRIPTO(vsenha))+','+; //5
+                                                        sr_cdbvalue(mdata_sis)+','+; //6
+                                                        sr_cdbvalue(vnivel1+vnivel2)+','+; //7
+                                                        sr_cdbvalue(mcomissao)+','+; //7
+                                                        sr_cdbvalue(mcom_oper)+','+; //7
+                                                        sr_cdbvalue(IF(EMPTY(mcom_praz),mcomissao,mcom_praz))+','+; //7
+                                                        sr_cdbvalue(mcota)+','+; //7
+                                                        sr_cdbvalue(mdata_sis)+','+; //7
+                                                        sr_cdbvalue(mexpira)+','+; //7
+                                                        sr_cdbvalue(mdoc_apagar)+','+; //7
+                                                        sr_cdbvalue(mestoq_min)+','+; //7
+                                                        sr_cdbvalue(mestoq_med)+','+; //7
+                                                        sr_cdbvalue(memail)+','+; //7
+                                                        sr_cdbvalue(mdat_aniv)+','+; //7
+                                                        sr_cdbvalue(' ')+')',,.f.)
+                                                        sr_getconnection():exec("COMMIT",,.f.)
+                                                EXIT
+                                        ENDIF
+                                ELSE
+                                        atencao('Senha Digitada Errada, Tente novamente !!!')
+                                        LOOP
+                                ENDIF
+                        ENDDO
+                        *************
+                        SELE('sen');ORDSETFOCUS(2)
+                        GO TOP
+                        *************
+                        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                        ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                        ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                        ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                        ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                        ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                        ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                        ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                        ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                        ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                        ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                        ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                        ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                        ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                        f7i:=0
+                        FOR f7i=1 TO LEN(ocolprod)
+                                oconsprod:ADDCOLUMN(ocolprod[f7i])
+                        NEXT
+                        oconsprod:HEADSEP := CHR(196)
+                        oconsprod:COLSEP := CHR(179)
+                        oconsprod:FORCESTABLE()
+                        EXIT
+                ENDDO
+                wvw_lclosewindow()
+        ELSEIF f7nkey == K_ENTER
+                mreg := RECNO()
+                mcod_ven := VAL(sen->scod_op)
+                mcod_vend := VAL(sen->scod_op)
+                IF mop = '*'
+                        op_tela(10,10,39,95,' Alteracao ')
+                        setcor(3)
+                        @ li+5,ci TO li+5,120
+                        janela(li+4,ci,' Comissao do Vendedor ','*','*')
+                        @ li+7,ci TO li+7,120
+                        janela(li+7,ci+1,' Comissao do Operador ','*','*')
+                        @ li+9,ci TO li+9,120
+                        setcor(1)
+                        mensagem('Preencha os Campos - <ESC> p/Retornar')
+                        DEVPOS(li+1,ci+2);DEVOUT('Cod.Operador..:')
+                        DEVPOS(li+2,ci+2);DEVOUT('Nome..........:')
+                        DEVPOS(li+3,ci+2);DEVOUT('Tipo..........:')
+                        DEVPOS(li+3,ci+21);DEVOUT('Modulo:')
+                        DEVPOS(li+4,ci+2);DEVOUT('Nivel.........:   e  ')
+                        DEVPOS(li+6,ci+2);DEVOUT('Comissao (%)..:')
+                        DEVPOS(li+6,ci+24);DEVOUT('Comissao Aprazo (%):')
+                        DEVPOS(li+8,ci+2);DEVOUT('Comissao (%)..:')
+                        DEVPOS(li+10,ci+2);DEVOUT('Cota R$.......:')
+                        DEVPOS(li+11,ci+2);DEVOUT('Data..........:')
+                        DEVPOS(li+12,ci+2);DEVOUT('SENHA ATUAL...:')
+                        DEVPOS(li+13,ci+2);DEVOUT('SENHA.........:')
+                        DEVPOS(li+14,ci+2);DEVOUT('Confirma SENHA:')
+                        DEVPOS(li+15,ci+2);DEVOUT('Quantidade de dias Expira Senha:')
+		        DEVPOS(li+16,ci+2);DEVOUT('Alerta Documento Apagar........:')
+                	DEVPOS(li+17,ci+2);DEVOUT('Alerta Estoque Abaixo do Minimo:')
+                        DEVPOS(li+18,ci+2);DEVOUT('Alerta Estoque Media por Dias..:')
+                        DEVPOS(li+19,ci+2);DEVOUT('Alerta Clientes Aniversarios...:')
+                        DEVPOS(li+20,ci+2);DEVOUT('Digite o EMAIL.................:')
+                        @ li+21,ci TO li+21,120
+                        DEVPOS(li+22,ci+2);DEVOUT('Conectador no Terminal.........:')
+                        DEVPOS(li+23,ci+2);DEVOUT('Conectador no Dia..............:')
+                        DEVPOS(li+24,ci+2);DEVOUT('Conectador no Horas............:')
+
+                        setcor(3)
+                        DEVPOS(li+1,ci+18);DEVOUT(sen->scod_op)
+                        DEVPOS(li+2,ci+18);DEVOUT(sen->snome)
+                        DEVPOS(li+3,ci+18);DEVOUT(sen->stipo)
+                        DEVPOS(li+3,ci+28);DEVOUT(sen->stipo_sis)
+                        DEVPOS(li+4,ci+18);DEVOUT(SUBSTR(sen->snivel,1,1))
+                        DEVPOS(li+4,ci+22);DEVOUT(SUBSTR(sen->snivel,2,1))
+                        DEVPOS(li+6,ci+18);DEVOUTPICT(sen->scomissao,'99.99')
+                        DEVPOS(li+6,ci+45);DEVOUTPICT(sen->scom_praz,'99.99')
+                        DEVPOS(li+8,ci+18);DEVOUTPICT(sen->scom_oper,'99.99')
+                        DEVPOS(li+10,ci+18);DEVOUTPICT(sen->scota,'99,999,999.99')
+                        DEVPOS(li+11,ci+18);DEVOUT(sen->sdata_cad )
+                        DEVPOS(li+15,ci+35);DEVOUT(sen->sexpira)
+                        DEVPOS(li+19,ci+35);DEVOUT(sen->dat_aniv)
+                        DEVPOS(li+20,ci+35);DEVOUT(SUBSTR(sen->email,1,50))
+                        DEVPOS(li+22,ci+35);DEVOUT(sen->terminal)
+                        DEVPOS(li+23,ci+35);DEVOUT(sen->data_acess)
+                        DEVPOS(li+24,ci+35);DEVOUT(sen->hora_acess)
+                        setcor(1)
+                        botao1(li+26,ci+2,li+28,ci+12)
+                        botao1(li+26,ci+15,li+28,ci+25)
+                        botao1(li+26,ci+28,li+28,ci+38)
+                        @ li+27,ci+4  PROMPT 'Alterar'
+                        @ li+27,ci+17 PROMPT 'Excluir'
+                        @ li+27,ci+30 PROMPT 'Liberar'
+                        SET INTEN ON
+                        MENU TO f7opcao
+
+                        IF LASTKEY() = 27
+                                wvw_lclosewindow()
+                                LOOP
+                        ELSEIF f7opcao = 1
+                                IF ! ver_nivel(mprg,'ALTERACAO DE OPERADORES','1',nivel_acess,,'AMBIE')
+                                        EXIT
+                                ENDIF
+                                IF cod_operado <> '999' .AND. sen->scod_op = '999'
+                                        atencao('Nao e possivel alterar este OPERADOR')
+                                        wvw_lclosewindow()
+                                        LOOP
+                                ENDIF
+                                CLEAR GETS
+                                WHILE .T.
+                                        mnome = SPACE(30)
+                                        vnivel1 := vnivel2 := vtipo := SPACE(1)
+                                        opcao = SPACE(1)
+                                        mcomissao := mcom_praz := mcom_oper := ;
+                                        mcota := 0
+                                        vsenha := vsenha1 := ''
+                                        mensagem('Digite o Codigo do Operador a ser Alterado - <ESC> p/Abandonar')
+
+                                        vsenha := ''
+                                        mnome := sen->snome
+                                        vtipo   := sen->stipo
+                                        vtipo_sis   := sen->stipo_sis
+                                        vnivel1 := SUBSTR(sen->snivel,1,1)
+                                        vnivel2 := SUBSTR(sen->snivel,2,1)
+                                        mcomissao := sen->scomissao
+                                        mcom_praz := sen->scom_praz
+                                        mcom_oper := sen->scom_oper
+                                        mcota := sen->scota
+                                        msituacao := sen->sh_i_c
+                                        mexpira   := sen->sexpira
+					mdoc_apagar := sen->doc_apagar
+					mestoq_min := sen->estoq_min
+					mestoq_med := sen->estoq_med
+					memail := sen->email
+					mdat_aniv := sen->dat_aniv
+                                        @ li+2,ci+18 GET mnome PICT '@!'
+                                        @ li+3,ci+18 GET vtipo PICT '@!' VALID vtipo $ 'O,V,G,A,B' .AND. lim_get() WHEN men_get(li+4,ci,'[O]perador - [V]endedor - [G]erente - [A]dministrador - [B]loqueado')
+                                        @ li+3,ci+28 GET vtipo_sis PICT '@!' VALID vtipo_sis $ 'S,V,C,M' .AND. lim_get() WHEN men_get(li+4,ci,'[S]iscom - [V]enda - [C]aixa - [M]Caixa/Venda')
+                                        @ li+4,ci+18 GET vnivel1 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+                                        @ li+4,ci+22 GET vnivel2 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+                                        @ li+6,ci+18 GET mcomissao PICT '99.99'
+                                        @ li+6,ci+45 GET mcom_praz PICT '99.99'
+                                        @ li+8,ci+18 GET mcom_oper PICT '99.99'
+                                        @ li+10,ci+18 GET mcota PICT '99,999,999.99'
+                                        READ
+                                        IF LASTKEY() = 27
+                                                EXIT
+                                        ENDIF
+                                        opcao := op_simnao('N','Deseja alterar a senha:')
+                                        IF LASTKEY() = 27
+                                                UNLOCK
+                                                LOOP
+                                        ENDIF
+                                        IF opcao = 'S'
+                                                WHILE .T.
+                                                        vsen_atual = ''
+                                                        vsenha = ''
+                                                        vsenha1 = ''
+                                                        mensagem('Digite sua Senha ATUAL')
+                                                        pegasenha(@vsen_atual,li+12,ci+18,setcor(2))
+                                                        IF EMPTY(vsen_atual)
+                                                                setcor(1)
+                                                                IF ! aut_sen('Senha para Liberar a Alteracao de SENHA: ','LIB_ALTSENHA')
+                                                                        LOOP
+                                                                ENDIF
+                                                                GO mreg
+                                                        ELSEIF ALLTRIM(DCRIPTO(sen->ssenha)) <> ALLTRIM(vsen_atual)
+                                                                atencao('Senha nao Confere, Digite a Senha Atual...')
+                                                                LOOP
+                                                        ENDIF
+                                                        mensagem('Digite sua Senha')
+                                                        pegasenha(@vsenha,li+13,ci+18,setcor(2))
+                                                        setcor(1)
+                                                        IF LEN(vsenha) <= 1 .OR. EMPTY(vsenha)
+                                                                LOOP
+                                                        ENDIF
+                                                        IF vsenha = 'NAO'
+                                                                vsenha := ''
+                                                                EXIT
+                                                        ENDIF
+                                                        mensagem('Digite Novamente sua Senha')
+                                                        pegasenha(@vsenha1,li+14,ci+18,setcor(2))
+                                                        setcor(1)
+                                                        IF LEN(vsenha1) <= 1
+                                                                LOOP
+                                                        ENDIF
+                                                        IF vsenha1 = 'NAO'
+                                                                vsenha := ''
+                                                                EXIT
+                                                        ENDIF
+                                                        IF vsenha == vsenha1
+                                                                EXIT
+                                                        ELSE
+                                                                atencao('Senha Digitada Errada, Tente novamente !!!')
+                                                                LOOP
+                                                        ENDIF
+                                                ENDDO
+                                        ENDIF
+                                        @ li+15,ci+35 GET mexpira PICT '999'
+	                                @ li+16,ci+35 GET mdoc_apagar PICT '@!' VALID mdoc_apagar $ ' ,X' .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+        	                        @ li+17,ci+35 GET mestoq_min PICT '@!' VALID mestoq_min $ ' ,X' .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+                	                @ li+18,ci+35 GET mestoq_med PICT '999'
+        	                        @ li+19,ci+35 GET mdat_aniv PICT '@!' VALID mdat_aniv $ ' ,X' .AND. lim_get() WHEN men_get(0,0,'Marque com um [X] ou deixe em branco')
+                                        @ li+20,ci+35 GET memail PICT '@S50'
+                                        READ
+                                        opcao := op_simnao('S','Confirma a Alteracao:')
+                                        IF opcao = 'N'
+                                                LOOP
+                                        ELSE
+                                                SR_BEGINTRANSACTION()
+                                                TRY
+                                                mcomando := "UPDATE insopera SET "
+                                                mcomando := mcomando + 'snome = '+sr_cdbvalue(mnome)
+                                                mcomando := mcomando + ',stipo = '+sr_cdbvalue(vtipo)
+                                                mcomando := mcomando + ',stipo_sis = '+sr_cdbvalue( vtipo_sis)
+                                                mcomando := mcomando + ',snivel = '+sr_cdbvalue( vnivel1+vnivel2)
+                                                mcomando := mcomando + ',scomissao = '+sr_cdbvalue( mcomissao)
+                                                mcomando := mcomando + ',scom_praz = '+sr_cdbvalue( mcom_praz)
+                                                mcomando := mcomando + ',scom_oper = '+sr_cdbvalue( mcom_oper)
+                                                mcomando := mcomando + ',scota = '+sr_cdbvalue( mcota)
+                                                mcomando := mcomando + ',sh_i_c = '+sr_cdbvalue( msituacao)
+                                                mcomando := mcomando + ',sexpira = '+sr_cdbvalue( mexpira)
+                                                mcomando := mcomando + ',doc_apagar = '+sr_cdbvalue( mdoc_apagar)
+						mcomando := mcomando + ',estoq_min  = '+sr_cdbvalue(mestoq_min)
+						mcomando := mcomando + ',estoq_med  = '+sr_cdbvalue(mestoq_med)
+						mcomando := mcomando + ',email  = '+sr_cdbvalue(memail)
+						mcomando := mcomando + ',dat_aniv  = '+sr_cdbvalue(mdat_aniv)
+                                                mcomando := mcomando + ' WHERE scod_op = '+sr_cdbvalue(STRZERO(mcod_ven,3))
+                                                sr_getconnection():exec(mcomando,,.f.)
+                                                CATCH e
+                                                sr_committransaction()
+                                                SR_ENDTRANSACTION()
+                                                END
+
+                                                IF ! EMPTY(vsenha)
+                                                        SR_BEGINTRANSACTION()
+                                                        TRY
+                                                                vsenha := CRIPTO(vsenha)
+                                                                sr_getconnection():exec("UPDATE insopera SET ssenha = "+sr_cdbvalue(vsenha)+ ',sult_e_c = '+sr_cdbvalue( mdata_sis)+ ' WHERE scod_op = '+sr_cdbvalue(STRZERO(mcod_ven,3)),,.f.)
+                                                        CATCH e
+                                                        sr_committransaction()
+                                                        SR_ENDTRANSACTION()
+                                                        END
+                                                ENDIF
+                                                sr_getconnection():exec('COMMIT',,.f.)
+                                        ENDIF
+                                        *************
+                                        SELE('sen');ORDSETFOCUS(2)
+                                        GO TOP
+                                        *************
+                                        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                                        ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                                        ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                                        ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                                        ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                                        ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                                        ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                                        ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                                        ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                                        ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                                        ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                                        ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                                        ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                                        ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                                        f7i:=0
+                                        FOR f7i=1 TO LEN(ocolprod)
+                                                oconsprod:ADDCOLUMN(ocolprod[f7i])
+                                        NEXT
+                                        oconsprod:HEADSEP := CHR(196)
+                                        oconsprod:COLSEP := CHR(179)
+                                        oconsprod:FORCESTABLE()
+                                        EXIT
+                                ENDDO
+                                wvw_lclosewindow()
+                        ELSEIF f7opcao = 2
+                                IF ! ver_nivel(mprg,'EXCLUSAO DE OPERADORES','1',nivel_acess,,'AMBIE')
+                                        EXIT
+                                ENDIF
+                                IF cod_operado <> '999' .AND. sen->scod_op = '999'
+                                        atencao('Nao e possivel alterar este OPERADOR')
+                                        EXIT
+                                ENDIF
+                                opcao := op_simnao('N','Deseja a Exclusao do Operador:')
+                                IF opcao = 'N'
+                                        LOOP
+                                ENDIF
+                                IF opcao = 'S'
+                                        IF ! BLOQREG()
+                                                atencao('Nao foi possivel acessar o Arquivo !!!')
+                                                LOOP
+                                        ENDIF
+                                        DELE
+                                        DBCOMMIT()
+                                        DBUNLOCK()
+                                        sr_getconnection():exec("DELETE FROM insopera WHERE SR_DELETED = 'T'",,.f.)
+                                        sr_getconnection():exec("COMMIT",,.f.)
+                                ENDIF
+                                *************
+                                SELE('sen');ORDSETFOCUS(2)
+                                GO TOP
+                                *************
+                                oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                                ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                                ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                                ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                                ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                                ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                                ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                                ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                                ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                                ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                                ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                                ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                                ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                                ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                                f7i:=0
+                                FOR f7i=1 TO LEN(ocolprod)
+                                        oconsprod:ADDCOLUMN(ocolprod[f7i])
+                                NEXT
+                                oconsprod:HEADSEP := CHR(196)
+                                oconsprod:COLSEP := CHR(179)
+                                oconsprod:FORCESTABLE()
+                                wvw_lclosewindow()
+                        ELSEIF f7opcao = 3
+                                IF ! ver_nivel(mprg,'LIBERACAO DE OPERADORES','1',nivel_acess,,'AMBIE')
+                                        EXIT
+                                ENDIF
+                                IF sen->scod_op = cod_operado
+                                        atencao('Nao pode LIBERAR este Usuario e ele que estar em uso...')
+                                        wvw_lclosewindow()
+                                        LOOP
+                                ENDIF
+                                IF 'N' = op_simnao('N','Deseja a LIBERAR este Operador:')
+                                        wvw_lclosewindow()
+                                        LOOP
+                                ENDIF
+                                SR_BEGINTRANSACTION()
+                                TRY
+
+                                sr_getconnection():exec("UPDATE insopera SET terminal = '',data_acess = NULL,hora_acess = '' WHERE scod_op = "+sr_cdbvalue(sen->scod_op),,.f.)
+                                sr_getconnection():exec('COMMIT',,.f.)
+                                CATCH e
+                                SR_ENDTRANSACTION()
+                                END
+                                *************
+                                SELE('sen');ORDSETFOCUS(2)
+                                GO TOP
+                                *************
+                                oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                                ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                                ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                                ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                                ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                                ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                                ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                                ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                                ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                                ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                                ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                                ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                                ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                                ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                                f7i:=0
+                                FOR f7i=1 TO LEN(ocolprod)
+                                        oconsprod:ADDCOLUMN(ocolprod[f7i])
+                                NEXT
+                                oconsprod:HEADSEP := CHR(196)
+                                oconsprod:COLSEP := CHR(179)
+                                oconsprod:FORCESTABLE()
+                                wvw_lclosewindow()
+                        ENDIF
+                ELSE
+                        CLEAR GETS
+                        EXIT
+                ENDIF
+                *************
+                SELE('sen');ORDSETFOCUS(2)
+                GO TOP
+                *************
+                oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                f7i:=0
+                FOR f7i=1 TO LEN(ocolprod)
+                        oconsprod:ADDCOLUMN(ocolprod[f7i])
+                NEXT
+                oconsprod:HEADSEP := CHR(196)
+                oconsprod:COLSEP := CHR(179)
+                oconsprod:FORCESTABLE()
+        ELSE
+                IF genkey(oconsprod,f7nkey,'sen')
+                        *************
+                        SELE('sen');ORDSETFOCUS(2)
+                        GO TOP
+                        *************
+                        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba)
+                        ocolprod[1] := TBCOLUMNNEW('Codigo',{||sen->scod_op})
+                        ocolprod[2] := TBCOLUMNNEW('Nome',{||sen->snome})
+                        ocolprod[3] := TBCOLUMNNEW('Tipo',{||sen->stipo})
+                        ocolprod[4] := TBCOLUMNNEW('Modulo',{||sen->stipo_sis})
+                        ocolprod[5] := TBCOLUMNNEW('Nivel',{||SUBSTR(sen->snivel,1,1)+' e '+SUBSTR(sen->snivel,2,1)})
+                        ocolprod[6] := TBCOLUMNNEW('Data Cad.',{||sen->sdata_cad})
+                        ocolprod[7] := TBCOLUMNNEW('Conectado Term.',{||sen->terminal})
+                        ocolprod[8] := TBCOLUMNNEW('Dt.Acess',{||DTOC(sen->data_acess)})
+                        ocolprod[9] := TBCOLUMNNEW('Dias Expira',{||sen->sexpira})
+                        ocolprod[10] := TBCOLUMNNEW('Comissao Av.',{||TRANSFORM(sen->scomissao,'999.99')+'%'})
+                        ocolprod[11] := TBCOLUMNNEW('Comissao Ap.',{||TRANSFORM(sen->scom_praz,'999.99')+'%'})
+                        ocolprod[12] := TBCOLUMNNEW('Comi.Operado',{||TRANSFORM(sen->scom_oper,'999.99')+'%'})
+                        ocolprod[13] := TBCOLUMNNEW('Cota R$',{||TRANSFORM(sen->scota,'999,999.99')+'%'})
+                        f7i:=0
+                        FOR f7i=1 TO LEN(ocolprod)
+                                oconsprod:ADDCOLUMN(ocolprod[f7i])
+                        NEXT
+                        oconsprod:HEADSEP := CHR(196)
+                        oconsprod:COLSEP := CHR(179)
+                        oconsprod:FORCESTABLE()
+                ENDIF
+        ENDIF
+END
+SELE(f7msele);IF(f7morde>0,ORDSETFOCUS(f7morde),)
+wvw_lclosewindow()
+IF f7nkey == K_ESC
+        RELEASE ALL
+        RETURN mcod_ven
+ELSE
+        RELEASE ALL
+        RETURN mcod_ven
+ENDIF
+RETURN NIL
+******************************* f i m *********************************************

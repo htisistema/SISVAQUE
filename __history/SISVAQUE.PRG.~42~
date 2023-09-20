@@ -1,0 +1,271 @@
+***********************************************************************************
+* INICIO DO SISVAQUE : 15/04/2013
+***********************************************************************************
+#include "wvwtools.ch"
+#include "inkey.ch"              // constantes de codigos das teclas
+#include "Fileio.ch"             // funcoes de leitura/gravacao de arquivo
+#include "set.ch"                // constantes da funcao SETKEY()
+#include "wingdi.ch"
+#include "winuser.ch"
+#include "common.ch"
+#include "setcurs.ch"
+#include "getexit.ch"
+//SQLRDD***************************************************************************
+#include "sqlrdd.ch"
+#include "firebird.ch"     // Needed if you plan to use native connection to Firebird
+#include "msg.ch"
+***********************************************************************************
+#define COM_CALE
+GLOBAL oApp
+
+FUNCTION main(mtc,mecf,mtipo_tela)
+
+********** DADOS DA HTI ***********************************************************
+MEMVAR msist,nivel_acess,getlist
+LOCAL mprg := 'SISVAQUE',;
+      men,f,num,mcgc_aux,mserie,mponto,mtip_t:=' ',mtela_term,mmapear,lin,linha,linhas,marq:='',;
+      matriz:={},sLinhas := '',i:=0
+
+PUBLIC cor,;
+       mversao    := 'v15.04.13',;
+       sistema    := '"SISVAQUE" Sistema Integrado de Vaquejada',;
+       msit_tip   := 'SISVAQUE',;
+       mcnpj_hrb    := '11156983000176',;
+       mim_hrb      := '4130553       ',;
+       mrazao_hrb   := 'J H BELTRAO SERVICOS INFORMATICA LTDA.   ',;
+       mrazao_fan   := 'HTI Sistemas.',;
+       mend_hrb     := 'RUA TEN. JOAO CICERO',;
+       mnum_hrb     := '415',;
+       mcomp_hrb    := 'AP.05',;
+       mbairro_hrb  := 'BOA VIAGEM',;
+       mcidade_hrb  := 'RECIFE',;
+       muf_hrb      := 'PE',;
+       mcep_hrb     := '51020190',;
+       mfone_hrb    := '3735.3592',;
+       mchv_priv    := 'MIICXAIBAAKBgQCjnkUffV9UPrYFB1Dm2Pzdc4TkTujrWkGQyHuuZ8z9prN8fqyOQexvUcbwQ1S8KnsF5vhlFE5W6GclXYT8+9586nmHZCXKJySX1M4LDNpQ44Tj0z3aPCh+PPh5Afy7kJWJbg4dwiNF6xv/dnqFmoS76IJEXVQqnQF3orwQDizQIQIDAQABAoGAJy5pgyb0wynZUM71srJXq3hUZI/4+xM8DD3WUGePEVbwOGnlTJPA2M+Ogk69ZeoOV9V9ukbok6tHuAzzIdn25zUBsC/g7dt01JbIjBPBSRrF2XUdFS3nB0U6+8E8ajxkHhH1sNlFs67Vli1HTFljQtLvDRrrbLnO+Ipnj27LuLkCQQDNQAVNKpVYxlJfka9CKUku5WRESlQDAGLMdqYTnxHilIfqYaoGzO50/caz9P99QZgcWX0VIHU8zSjCW0KznxkfAkEAzBMGa2TQctjOWrGpAfeEMpGIDrr7dSYQvA9c9ZsJe6jQ3u064puFfCpXYS4pvqjCitkkjekizxkYFBXeHdquvwJAMjGU2lEuor4lSN/cx0ZHcmOAyL6QmwdOIghmBuhgvFNshaIKrY0SR6QEIuAoVt5ir5Qm5bLBWPQnIpik0D55KwJAAiLY2Frvy6P1VQGzETA0FAtt7ymJ5EoHttA6Wt/Kk57KwOqeySxzkz8mNwAys6o0jxuCxHGCScSredpYvttBJQJBAIH0lqm+ARnge65Fs1Idnnjyma5VxCPK+GwwMkzn+bErrC7W/OJvPsbxgWLkcMdUq6eTTXDX5PiQk9Me6sRSsLw=',;
+       mchv_public  := 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCY5w/Z8m6n1WnYVoMM56CnSNRgGPpD9kzsQcYO/ZMPyiik/qtpVint/LT3nROr8sCqvxUvFo3dUzfu1PKuKjMVwZUyvoMNcqetzQOzlh+s2YDeYOM48zMMAhrjElV1C4JHxQxkUq+DvxeqKPGLzb3uDgH32yHYKu14bbHyIC3JVwIDAQAB',;
+       mmodulo      := 'A39E451F7D5F543EB6050750E6D8FCDD7384E44EE8EB5A4190C87BAE67CCFDA6B37C7EAC8E41EC6F51C6F04354BC2A7B05E6F865144E56E867255D84FCFBDE7CEA79876425CA272497D4CE0B0CDA50E384E3D33DDA3C287E3CF87901FCBB9095896E0E1DC22345EB1BFF767A859A84BBE882445D542A9D0177A2BC100E2CD021',;
+       mmd5         := '',;
+       mdata_sis    :=DATE(),;
+       cod_operado :='   ',;
+       m_cfg:={},;
+       m_set:={},;
+       m_indiv:={},;
+       mdefcam_imp:=Curdrive()+ ":\" + rtrim(curdir())+ "\",;
+       ncnn:=0,ncnn1:=0,ncnn2:=0,cConnString,m_line := '',m_qp := CHR(13)+CHR(10)
+
+REQUEST SQLRDD             // SQLRDD should be linked in
+REQUEST SR_FIREBIRD        // Needed if you plan to use native connection to Firebird
+REQUEST DBFCDX
+REQUEST DBFFPT
+
+********** FOTO: HRBLOGO **********************************************************
+REQUEST HB_CODEPAGE_PTISO
+REQUEST HB_LANG_ES
+REQUEST HB_CODEPAGE_ES
+REQUEST HB_CODEPAGE_ESMWIN
+REQUEST HB_CODEPAGE_ESWIN
+WITH OBJECT ( oApp := WvW_tApplication():New( CurDrive() + ":\" + CurDir() ) )
+        :cImagePath := 'C:\SISVAQUE\HRBLOGO.JPG'
+        :Setup()
+        :SetTitle( "SISVAQUE " + mversao)
+        :SetIcon( "winflag.ico" )
+        :lDevelopment := .T.
+END
+WvW_SetGet( "RDD"         ,"DBFCDX")
+WvW_SetGet( "CODEPAGE"    ,255)
+WvW_SetGet( "WIN_ROWS"    ,28)
+WvW_SetGet( "WIN_COLS"    ,88)
+wvw_SetVertCaret(.F.)
+wvw_setmaincoord(.F.)
+SET EVENTMASK TO 159
+SET CONS OFF                                                
+SET WRAP ON
+SET DATE BRITI
+SET DELE ON
+SET EPOCH TO 1950
+mdata_sis := DATE()
+RDDSETDEFAULT('SQLRDD')
+SR_SetMultiLang( .t. )
+SR_SetBaseLang( LANG_PT_BR )
+
+
+********** INFORMAÇÕES DA TELA "BORDA" ********************************************
+SETMODE(50,120)
+WVW_SetFont(,'lucida console',17, 10,FW_HEAVY, PROOF_QUALITY )  // 800X600
+op_tela(00,00,38,120,mrazao_fan+SPACE(5)+msit_tip+'-'+mversao+SPACE(5)+'Data:'+DTOC(mdata_sis)+' - '+ver_dia(mdata_sis),,1)
+
+********** SACCFG.INI *************************************************************
+i := 1
+ncnn := 0
+IF ! FILE('SACCFG.INI')
+        saccfg('1')
+ENDIF
+
+linhas := linha := 0
+linhas := MLCOUNT(MEMOREAD('SACCFG.INI'),110)
+m_cfg := {}
+FOR linha = 1 TO  linhas
+        lin := MEMOLINE(MEMOREAD('SACCFG.INI'),110,linha,,)
+        IF SUBSTR(lin,5,1) = 'C'
+                AADD(m_cfg,ALLTRIM(SUBSTR(lin,30)))
+        ELSE
+                AADD(m_cfg,VAL(SUBSTR(lin,30)))
+        ENDIF
+NEXT
+fclose('saccfg.ini')
+IF LEN(m_cfg) = 0
+        atencao('Favor verificar o arquivo SACCFG.INI ou entrar em contato com a HRB Sistemas...' )
+        RETURN NIL
+ENDIF
+IF m_cfg[2] = 'S' .AND. ! File('SISVAQUE.GDB')
+        IF SQL_SUCCESS = FBCreateDB( 'SISVAQUE.GDB','SYSDBA','masterkey',16384, 'ISO8859_1')
+                atencao('Banco Criado com SUCESSO')
+                m_line := 'ON'
+                //nCnn := SR_AddConnection(CONNECT_FIREBIRD,'FIREBIRD='+ALLTRIM(m_cfg[4])+';uid=SYSDBA;pwd=masterkey;charset=ISO8859_1')
+                nCnn := SR_AddConnection(CONNECT_FIREBIRD,'FIREBIRD='+ALLTRIM(m_cfg[3])+';uid=SYSDBA;pwd=masterkey;charset=NONE')
+                If nCnn < 0
+                        atencao("Nao foi possivel conectar ao BANCO DE DADOS. Verificar o Caminho do Banco de Dados no SACCFG.INI ["+ALLTRIM(m_cfg[4])+"] ou se o FIREBIRD estar Instalado, Caso nao tenha sucesso contactar com o Administrador da REDE")
+                        Quit
+                EndIf
+                sisdbf()
+        ELSE
+                atencao('Nao foi possivel criar o BANCO DE DADOS...')
+                Quit
+        ENDIF
+ENDIF
+
+op_tela(10,15,12,85,'A T E N C A O ')
+DEVPOS(01,01);DEVOUT('Tentando CONEXAO com o BANCO DE DADOS, Aguarde um Momento......')
+********** CONECTANDO AO FIREBIRD *************************************************
+//nCnn := SR_AddConnection(CONNECT_FIREBIRD,'FIREBIRD='+ALLTRIM(m_cfg[3])+';uid=SYSDBA;pwd=masterkey;charset=ISO8859_1')
+nCnn := SR_AddConnection(CONNECT_FIREBIRD,'FIREBIRD='+ALLTRIM(m_cfg[3])+';uid=SYSDBA;pwd=masterkey;charset=NONE')
+IF nCnn < 0
+        atencao("Nao foi possivel conectar ao BANCO DE DADOS. Verificar o Caminho do Banco de Dados no SACCFG.INI ou se o FIREBIRD estar Instalado, Caso nao tenha sucesso contactar com o Administrador da REDE")
+        Quit
+ELSE
+        SR_SetActiveConnection(nCnn)
+        DBCLOSEALL()
+ENDIF
+sisdbf(,,1)
+
+***********************************************************************************
+wvw_lclosewindow()
+
+mensagem('Verificando o Arquivo -> SACMOV.DBF')
+IF ! FILE('SACMOV.DBF')
+        matriz:={ }
+        AADD(matriz,{'cod_cad       ','C',4,0})
+        AADD(matriz,{'nom_pux      ','C',30,0})
+        AADD(matriz,{'cav_pux      ','C',30,0})
+        AADD(matriz,{'nom_est      ','C',30,0})
+        AADD(matriz,{'cav_est      ','C',30,0})
+        AADD(matriz,{'rep          ','C',60,0})
+        AADD(matriz,{'cidade       ','C',30,0})
+        AADD(matriz,{'estado       ','C',2,0})
+        AADD(matriz,{'cat          ','C',2,0})
+        AADD(matriz,{'data          ','D',8,0})
+        AADD(matriz,{'hora          ','C',8,0})
+        AADD(matriz,{'num_senha     ','C',4,0})
+        AADD(matriz,{'rodizio       ','C',4,0})
+        AADD(matriz,{'boi1          ','C',1,0})
+        AADD(matriz,{'boi2          ','C',1,0})
+        AADD(matriz,{'boi3          ','C',1,0})
+        AADD(matriz,{'boi4          ','C',1,0})
+        AADD(matriz,{'boi5          ','C',1,0})
+        AADD(matriz,{'boi6          ','C',1,0})
+        AADD(matriz,{'liberada      ','C',1,0})
+        AADD(matriz,{'valor        ','N',12,2})
+        DBCREATE('sacmov',matriz,'DBFCDX')
+ENDIF
+mensagem('Verificando o Arquivo -> SACDISP.DBF')
+IF ! FILE('SACDISP.DBF')
+        matriz:={ }
+        AADD(matriz,{'cod_cad       ','C',4,0})
+        AADD(matriz,{'nom_pux      ','C',30,0})
+        AADD(matriz,{'cav_pux      ','C',30,0})
+        AADD(matriz,{'nom_est      ','C',30,0})
+        AADD(matriz,{'cav_est      ','C',30,0})
+        AADD(matriz,{'rep          ','C',60,0})
+        AADD(matriz,{'cidade       ','C',30,0})
+        AADD(matriz,{'estado       ','C',2,0})
+        AADD(matriz,{'cat          ','C',2,0})
+        AADD(matriz,{'data          ','D',8,0})
+        AADD(matriz,{'hora          ','C',8,0})
+        AADD(matriz,{'num_senha     ','C',4,0})
+        AADD(matriz,{'rodizio       ','C',4,0})
+        AADD(matriz,{'boi1          ','C',1,0})
+        DBCREATE('sacdisp',matriz,'DBFCDX')
+ENDIF
+MYRUN('MD C:\SIACCFG')
+arq_bat()
+
+***********************************************************************************
+m_set:={}
+sr_getconnection():exec("SELECT * FROM sacsetup",,.t.,@m_set)
+IF LEN(m_set) = 0
+        atencao('VAZIO')
+ENDIF
+m_indiv:={}
+sr_getconnection():exec("SELECT * FROM sacindiv",,.t.,@m_indiv)
+
+***********************************************************************************
+memp_resa := m_set[1,1]
+WHILE .T.
+        mdata_sis := DATE()
+                Wvw_SetTitle( ,m_set[1,1]+SPACE(20)+'-'+mversao+SPACE(10)+" - .:HTI Sistemas - (81)3735.3592:." )
+                *-----------------------------------------------------
+                CLOSE ALL
+                IF ! AbriArq('insopera','sen',,,,,,'N');RETURN NIL;ENDIF
+                *-----------------------------------------------------
+                setcor(1)
+                WVW_DrawImage( ,00,00,31,120,'HRBLOGO.JPG',.F.,.F.)
+                IF ! senha(,'*');fim(,'*');ENDIF    // Solicitar senha do sistema
+ENDDO
+CLOSE ALL
+wvw_lclosewindow()
+RETURN NIL
+
+********** FIM ********************************************************************
+FUNCTION ShowClue( ... )
+
+***********************************************************************************
+LOCAL xMessage
+STATIC lPostP, cMessage := ""
+IF ( lPostP = NIL )
+        cMessage := ""
+ENDIF
+FOR EACH xMessage IN HB_aParams()
+        lIsArray := .F.
+        SWITCH ValType( xMessage )
+        CASE "C"
+        CASE "M"
+                EXIT
+        CASE "N"
+                xMessage := LTrim( Str( xMessage ) )
+                EXIT
+        CASE "D"
+                xMessage := DToC( xMessage )
+                EXIT
+        CASE "L"
+                xMessage := IF( xMessage, ".T.", ".F." )
+                EXIT
+        CASE "O"
+                xMessage := xMessage:className + " Object"
+                EXIT
+        CASE "B"
+                xMessage := "{||...}"
+                EXIT
+        CASE "A"
+                lPostP := lIsArray := .T.
+                EXIT
+                DEFAULT
+                xMessage := "NIL"
+        END
+        cMessage += ( "/" + xMessage )
+NEXT
+WvW_SBsetText( 1, 0, "* " +  cMessage )
+lPostP := NIL
+RETURN (.T.)
+
+***********************************************************************************

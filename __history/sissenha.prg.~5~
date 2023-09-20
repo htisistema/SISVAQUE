@@ -1,0 +1,116 @@
+#include "inkey.ch"              // constantes de codigos das teclas
+*********************************************************
+FUNCTION sissenha(mop)
+**********************
+LOCAL mprg:='SISSENHA',opcao,;
+      mcons_inso:={}
+
+//IF ! ver_nivel(mprg,'MENU DE SENHAS','15',nivel_acess,,'AMBIE')
+//        RETURN NIL
+//ENDIF
+setcor(1)
+op_tela(05,0,29,120,memp_resa+SPACE(50)+" Cadastro de Operadores / Outros ",,'*')
+WHILE .T.
+        exibi_prg(mprg)
+        opcao = 'S'
+        setcor(1)
+        mensagem('Preencha os Campos - <ESC> p/Retornar')
+        DEVPOS(1,2);DEVOUT('Cod.Operador..:')
+        DEVPOS(2,2);DEVOUT('Nome..........:')
+        DEVPOS(3,2);DEVOUT('Tipo..........:')
+        DEVPOS(3,21);DEVOUT('Modulo:')
+        DEVPOS(4,2);DEVOUT('Nivel.........:   e  ')
+        DEVPOS(6,2);DEVOUT('Comissao (%)..:')
+        DEVPOS(6,24);DEVOUT('Comissao Aprazo (%):')
+        DEVPOS(8,2);DEVOUT('Comissao (%)..:')
+        DEVPOS(10,2);DEVOUT('Cota R$.......:')
+        DEVPOS(11,2);DEVOUT('Data..........:')
+        DEVPOS(12,2);DEVOUT('SENHA.........:')
+        DEVPOS(13,2);DEVOUT('Confirma SENHA:')
+        DEVPOS(14,2);DEVOUT('Qtd.dias Expira Senha..........:')
+        DEVPOS(15,2);DEVOUT('Alerta Documento Apagar........:')
+        DEVPOS(16,2);DEVOUT('Alerta Estoque Abaixo do Minimo:')
+        DEVPOS(17,2);DEVOUT('Alerta Estoque Media por Dias..:')
+        DEVPOS(18,2);DEVOUT('Alerta Clientes Aniversarios...:')
+        DEVPOS(19,2);DEVOUT('Digite o Email.................:')
+        @ 1,18 GET mcod_vend PICT '999' VALID IF(EMPTY(mcod_vend),.F.,.T.)
+        READ
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+        mcons_inso := {}
+        onnection():exec("SELECT * FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_vend,3)),,.t.,@mcons_inso)
+        IF LEN(mcons_inso) > 0
+                atencao('Codigo ja Existe no cadastro !!!')
+                LOOP
+        ENDIF
+        setcor(3)
+        mdata_cad = mdata_sis
+        DEVPOS(1,18);DEVOUT(STRZERO(mcod_vend,3))
+        DEVPOS(10,18);DEVOUT(mdata_cad)
+        setcor(1)
+        @ 2,18 GET mnome PICT '@!'
+        @ 3,18 GET vtipo PICT '@!' VALID vtipo $ 'O,V,G,A,B' .AND. lim_get() WHEN men_get(4,ci,'[O]perador - [V]endedor - [G]erente - [A]dministrador - [B]loqueado')
+        @ 3,28 GET vtipo_sis PICT '@!' VALID vtipo_sis $ 'S,V,C,M' .AND. lim_get() WHEN men_get(4,ci,'[S]iscom - [V]enda - [C]aixa - [M]Caixa/Venda')
+        @ 4,18 GET vnivel1 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+        @ 4,22 GET vnivel2 PICT '9'      //VALID vnivel $ '1,2,3,4,5,6,7,8,9,0'
+        @ 6,18 GET mcomissao PICT '99.99'
+        @ 6,45 GET mcom_praz PICT '99.99'
+        @ 8,18 GET mcom_oper PICT '99.99'
+        @ 10,18 GET mcota PICT '99,999,999.99'
+        READ
+        IF LASTKEY() = 27
+                LOOP
+        ENDIF
+        opcao := op_simnao('S','Confirma a Inclusao do Operador:')
+        IF opcao = 'N'
+                EXIT
+        ELSE
+                sr_getconnection():exec('INSERT INTO insopera ('+;
+                        'scod_op,'+;
+                        'stipo,'+;
+                        'stipo_sis,'+;
+                        'snome  ,'+;
+                        'ssenha      ,'+;
+                        'sdata_cad ,'+;
+                        'snivel ,'+;
+                        'scomissao     ,'+;
+                        'scom_oper     ,'+;
+                        'scom_praz,'+;
+                        'scota,'+;
+                        'sult_e_c,'+;
+                        'sexpira,'+;
+                        'doc_apagar,'+;
+                        'estoq_min,'+;
+                        'estoq_med,'+;
+                        'email,'+;
+                        'dat_aniv,'+;
+                        'SR_DELETED )'+;
+                        ' VALUES ('+;
+                        sr_cdbvalue(STRZERO(mcod_vend,3))+','+; //1
+                        sr_cdbvalue(vtipo)+','+; //2
+                        sr_cdbvalue(vtipo_sis)+','+; //3
+                        sr_cdbvalue(mnome)+','+; //4
+                        sr_cdbvalue(CRIPTO(vsenha))+','+; //5
+                        sr_cdbvalue(mdata_sis)+','+; //6
+                        sr_cdbvalue(vnivel1+vnivel2)+','+; //7
+                        sr_cdbvalue(mcomissao)+','+; //7
+                        sr_cdbvalue(mcom_oper)+','+; //7
+                        sr_cdbvalue(IF(EMPTY(mcom_praz),mcomissao,mcom_praz))+','+; //7
+                        sr_cdbvalue(mcota)+','+; //7
+                        sr_cdbvalue(mdata_sis)+','+; //7
+                        sr_cdbvalue(mexpira)+','+; //7
+                        sr_cdbvalue(mdoc_apagar)+','+; //7
+                        sr_cdbvalue(mestoq_min)+','+; //7
+                        sr_cdbvalue(mestoq_med)+','+; //7
+                        sr_cdbvalue(memail)+','+; //7
+                        sr_cdbvalue(mdat_aniv)+','+; //7
+                        sr_cdbvalue(' ')+')',,.f.)
+                        sr_getconnection():exec("COMMIT",,.f.)
+                EXIT
+        ENDIF
+ENDDO
+wvw_lclosewindow()
+RELEASE ALL
+RETURN NIL
+******************************* f i m *********************************************

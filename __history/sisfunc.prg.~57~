@@ -1,0 +1,3049 @@
+#INCLUDE "COMMCTRL.CH"
+#INCLUDE "HRBMENU.CH"
+#include "wvwtools.ch"
+#INCLUDE "wingdi.ch"
+#INCLUDE "winuser.ch"
+#include "inkey.ch"              // constantes de codigos das teclas
+//SQLRDD***************************************************************************
+#include "sqlrdd.ch"
+#include "firebird.ch"     // Needed if you plan to use native connection to Firebird
+***********************************************************************************
+MEMVAR getlist
+
+***********************************************************************************
+* CONFIGURACAO DE TERMINAIS
+***********************************************************************************
+FUNCTION saccfg(mnao)
+
+setcor(1)
+op_tela(10,10,15,110,'CONFIGURACAO INDIVIDUAL DO TERMINAL',,1)
+WHILE .T.
+        setcor(1)
+        IF mnao # NIL
+                m_cfg:={}
+                AADD(m_cfg,NETNAME())
+                AADD(m_cfg,'T')
+                AADD(m_cfg,SPACE(20))
+                AADD(m_cfg,mversao)
+                AADD(m_cfg,SPACE(40))
+                AADD(m_cfg,SPACE(40))
+                AADD(m_cfg,SPACE(40))
+        ENDIF
+        DEVPOS(1,1);DEVOUT('Terminal.................:')
+        DEVPOS(2,1);DEVOUT('Tipo[S]ervidor [T]erminal:')
+        DEVPOS(3,1);DEVOUT('Caminho BANCO DE DADOS...:')
+        DEVPOS(4,1);DEVOUT('Caminho GERAL............:')
+        DEVPOS(5,1);DEVOUT('Caminho FOTO dos USUARIOS:')
+        DEVPOS(6,1);DEVOUT('Caminho FOTO dos CLIENTES:')
+        m_cfg[1] := m_cfg[1] + SPACE(10)
+        m_cfg[3] := m_cfg[3] + SPACE(30)
+        @ 1,28 GET m_cfg[1] PICT '@!'
+        @ 2,28 GET m_cfg[2] PICT '@!' VALID m_cfg[2] $ 'S,T'
+        @ 3,28 GET m_cfg[3] PICT '@!S40'
+        @ 3,28 GET m_cfg[5] PICT '@!S40'
+        @ 3,28 GET m_cfg[6] PICT '@!S40'
+        @ 3,28 GET m_cfg[7] PICT '@!S40'
+        READ
+        IF LASTKEY() = 27 .OR. 'N' = op_simnao('S','Confirma as Configuracoes:')
+                LOOP
+        ENDIF
+        //ENDIF
+        FCLOSE('saccfg.ini')
+	MYRUN('REN saccfg.ini saccfg01.ini')
+        //FCREATE('saccfg.ini' )
+        mArq        := fcreate("saccfg.ini" )
+        sLinhas := '001 C Terminal              ='+m_cfg[1]    +m_qp+ ;
+                   '002 C Tipo de Terminal      ='+m_cfg[2]    +m_qp+ ;
+                   '003 C Caminho Banco Dados   ='+m_cfg[3]    +m_qp+ ;
+                   '004 C Versao do Sistema     ='+m_cfg[4]    +m_qp+ ;
+                   '005 C Caminho GERAL         ='+m_cfg[5]    +m_qp+ ;
+                   '006 C Caminho Foto USUARIO  ='+m_cfg[6]    +m_qp+ ;
+                   '007 C Caminho Foto CLIENTE  ='+m_cfg[7]
+
+        fwrite( mArq, @sLinhas, len( sLinhas ) )
+        FCLOSE(mArq)
+        EXIT
+ENDDO
+wvw_lclosewindow()
+RETURN .T.
+
+************************* F I M ***************************************************
+* CONFIGURACAO DE TERMINAIS
+***********************************************************************************
+
+FUNCTION sacbkp(mnao)
+
+fclose('sacbkp.ini')
+MYRUN('DEL SACBKP.INI')
+SET DEVI TO PRINT;SET PRINT ON
+SET PRINT TO ('SACBKP.INI')
+DEVPOS(PROW()  ,00);DEVOUT('001 C EXECUTAVEL            =1')
+DEVPOS(PROW()+1,00);DEVOUT('002 C NOME DO ARQUIVO       =SACBKP')
+DEVPOS(PROW()+1,00);DEVOUT('003 C ARQUIVOS P/COMPACTAR  =SISVAQUE.GDB SISCOM.EXE *.DLL *.INI')
+DEVPOS(PROW()+1,00);DEVOUT('004 C 1 -CAMINHO P/ BACKUP  =C:\SIACCFG\')
+DEVPOS(PROW()+1,00);DEVOUT('005 N QTD DIAS ARQUIVADO    =7')
+DEVPOS(PROW()+1,00);DEVOUT('006 C 2 -CAMINHO P/ BACKUP  =')
+DEVPOS(PROW()+1,00);DEVOUT('007 N QTD DIAS ARQUIVADO    =')
+DEVPOS(PROW()+1,00);DEVOUT('008 C 3 -CAMINHO P/ BACKUP  =')
+DEVPOS(PROW()+1,00);DEVOUT('009 N QTD DIAS ARQUIVADO    =')
+DEVPOS(PROW()+1,00);DEVOUT('010 C 4 -CAMINHO P/ BACKUP  =')
+DEVPOS(PROW()+1,00);DEVOUT('011 N QTD DIAS ARQUIVADO    =')
+DEVPOS(PROW()+1,00);DEVOUT('012 C 5 -CAMINHO P/ BACKUP  =')
+DEVPOS(PROW()+1,00);DEVOUT('013 N QTD DIAS ARQUIVADO    =')
+DEVPOS(PROW()+1,00);DEVOUT('014 C 6 -CAMINHO P/ BACKUP  =')
+DEVPOS(PROW()+1,00);DEVOUT('015 N QTD DIAS ARQUIVADO    =')
+SETPRC(00,00)
+SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+RETURN .T.
+
+************************* F I M ***************************************************
+* CRIAR ARQUIVOS .BAT
+***********************************************************************************
+
+FUNCTION arq_bat
+
+IF ! FILE('HRBSIS.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('HRBSIS.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('NET TIME \\SERVIDOR /SET /YES')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE LPT2 /DELETE')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE LPT2 \\nomecomputador\nomeimpressora /yes')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE I: /DELETE')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE I: \\SERVIDOR\SIAC /YES')
+        DEVPOS(PROW()+1,00);DEVOUT('REM SUBST T: C:\BMTEF')
+        DEVPOS(PROW()+1,00);DEVOUT('XCOPY I:\*.EXE /r /y /d')
+        DEVPOS(PROW()+1,00);DEVOUT('XCOPY I:\*.DLL /r /y /d')
+        DEVPOS(PROW()+1,00);DEVOUT('SISCOM %1')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('HRBPDV.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('HRBPDV.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('NET TIME \\SERVIDOR /SET /YES')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE I: /DELETE')
+        DEVPOS(PROW()+1,00);DEVOUT('NET USE I: \\SERVIDOR\SIAC /YES')
+        DEVPOS(PROW()+1,00);DEVOUT('XCOPY I:\*.EXE /r /y /d')
+        DEVPOS(PROW()+1,00);DEVOUT('XCOPY I:\*.DLL /r /y /d')
+        DEVPOS(PROW()+1,00);DEVOUT('SISPDV %1')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('SIACBKP.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('SIACBKP.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('CLS')
+        DEVPOS(PROW()+1,00);DEVOUT('CD\SIAC')
+        DEVPOS(PROW()+1,00);DEVOUT('ARJ A -Y SIACBKP SISVAQUE.GDB SISCOM.EXE *.DLL *.INI')
+        DEVPOS(PROW()+1,00);DEVOUT('COPY SIACBKP.ARJ C:\SIACCFG')
+        DEVPOS(PROW()+1,00);DEVOUT('COPY SIACBKP.ARJ E:')
+        DEVPOS(PROW()+1,00);DEVOUT('CD\SIAC')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('VERIGDB.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('VERIGDB.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('CLS')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO Aguarde um momento que estar sendo feito uma VERIFICACAO no seu BANCO DE DADOS.....')
+        DEVPOS(PROW()+1,00);DEVOUT('gfix -v -full -user SYSDBA -password masterkey SISVAQUE.GDB')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('PAUSE')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('CORREGDB.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('CORREGDB.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('CLS')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO Aguarde um momento que estar sendo feito uma CORRECAO no seu BANCO DE DADOS.....')
+        DEVPOS(PROW()+1,00);DEVOUT('gfix -mend -full -ignore -user SYSDBA -password masterkey SISVAQUE.GDB')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('PAUSE')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('BKPGDB.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('BKPGDB.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('CLS')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO Aguarde um momento que estar sendo feito o BACKUP no seu BANCO DE DADOS.....')
+        DEVPOS(PROW()+1,00);DEVOUT('DEL siscom.bkp')
+        DEVPOS(PROW()+1,00);DEVOUT('gbak -B -user SYSDBA -password masterkey SISVAQUE.GDB siscom.bkp')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('PAUSE')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+IF ! FILE('RESTGDB.BAT')
+        SET DEVI TO PRINT;SET PRINT ON
+        SET PRINT TO ('RESTGDB.BAT')
+        DEVPOS(PROW()  ,00);DEVOUT('@ ECHO OFF')
+        DEVPOS(PROW()+1,00);DEVOUT('CLS')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO Aguarde um momento que estar sendo feito a RESTAURACAO do seu BANCO DE DADOS.....')
+        DEVPOS(PROW()+1,00);DEVOUT('gbak -R -user SYSDBA -password masterkey siscom.bkp SISVAQUE.GDB')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('@ ECHO .')
+        DEVPOS(PROW()+1,00);DEVOUT('PAUSE')
+        SETPRC(00,00)
+        SET PRINT TO;SET PRINT OFF;SET DEVI TO SCREEN
+ENDIF
+
+RETURN NIL
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION op_tela(op_l,op_c,op_lb,op_cb,op_mensagem,mli,mcent,mclose)
+
+LOCAL mnumero
+wvw_maximize()
+mnumero := wvw_nopenwindow(,op_l,op_c,op_lb,op_cb)
+Wvw_SetTitle( ,op_mensagem)
+IF mclose <> NIL
+        wvw_noclose()
+ENDIF
+IF mcent # NIL  //.OR. (op_lb >= 50 .OR. op_cb = 90)
+        WVW_CenterWindow(,.T.,.T.)
+ENDIF
+IF mli = NIL
+        WVW_SBCreate()
+        WVW_SBAddPart(,,800,0,.F.)
+ENDIF
+RETURN mnumero
+
+************************* F I M ***************************************************
+* EXECUTAR PROGRAMAS EXTERNOS
+***********************************************************************************
+
+FUNC MYRUN( cComando )
+
+local oShell, RET
+oShell := CreateObject( "WScript.Shell" )
+RET := oShell:Run( "%comspec% /c " + cComando, 0, .T. )
+oShell := NIL
+return iif( RET = 0, .T., .F. )
+
+************************* F I M ***************************************************
+
+FUNCTION MyRun2( cRun )
+
+Local hIn, hOut, nRet //, hProc
+Local hProc := HB_OpenProcess(cRun , @hIn, @hOut, @hOut )
+
+IF hProc < 0
+   	FClose( hProc )
+   	FClose( hIn )
+   	FClose( hOut )
+   	Return(.F.)
+	//atencao("Error: " + valtoprg(FError()))
+ENDIF
+nRet := HB_ProcessValue( hProc,.f. )
+
+IF nRet > 0
+   	FClose( hProc )
+   	FClose( hIn )
+   	FClose( hOut )
+   	Return(.F.)
+endif
+FClose( hProc )
+FClose( hIn )
+FClose( hOut )
+Return(.T.)
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION mensagem(men,mop)
+
+IF mop = NIL
+        WVW_SBSetText(,1,'Mensagem: '+men)
+ELSE
+        WVW_SBSetText(,1,men)
+ENDIF
+
+RETURN NIL
+
+************************* F I M ***************************************************
+* FUNCAO PARA QUALIDADE DE IMPRESSAO
+***********************************************************************************
+
+FUNCTION imprt(imp,tipo,linha,col)
+
+*e chr(27)+"w1" aumenta a altura da fonte, e "w0" volta ao normal
+IF col = NIL
+        col := 0
+ENDIF
+IF linha = NIL
+        linha := 0
+ENDIF
+IF imp = 'M' .AND. tipo = 'C'	//CONDENSADO
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+CHR(15))
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'N'	//NORMAL DRAFT
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(18))
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'N+'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"E")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'N-'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"F")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'R'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"k0")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'S'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"k1")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'T+'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"x1")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'T-'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+"x0")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'S+'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+CHR(45)+"1")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'S-'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+CHR(45)+"0")
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'E'
+       DEVPOS(PROW()+linha,col);DEVOUT(CHR(14))
+       RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'M'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(15)+CHR(14))
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'P8'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'0')
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'A'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'W'+'1')
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'P6'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'2')
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'W1'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'W'+'1')
+        RETURN .T.
+ELSEIF imp = 'M' .AND. tipo = 'W0'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'W'+'0')
+        RETURN .T.
+/*
+ELSEIF imp = 'J' .AND. tipo = 'C'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s16.67H')
+*        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s15H')
+        RETURN NIL
+ELSEIF imp = 'J' .AND. tipo = 'N'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s10H')
+        RETURN NIL
+ELSEIF imp = 'J' .AND. tipo = 'M'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s10H')
+        RETURN NIL
+ELSEIF imp = 'J' .AND. tipo = 'E'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s5H')
+        RETURN NIL
+ELSEIF imp = 'J' .AND. tipo = 'P8'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s1P')
+        RETURN NIL
+ELSEIF imp = 'J' .AND. tipo = 'P6'
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(27)+'(s0P')
+        RETURN NIL
+*/
+ELSEIF imp = 'D' .AND. tipo = 'C'
+        DEVPOS(PROW()+linha,col);DEVOUT('M')
+        RETURN .T.
+ELSEIF imp = 'D' .AND. tipo = 'N'
+        DEVPOS(PROW()+linha,col);DEVOUT('P')
+        RETURN .T.
+ELSEIF imp = 'D' .AND. tipo = 'E'
+        DEVPOS(PROW()+linha,col);DEVOUT('P')
+        RETURN .T.
+ELSE
+        DEVPOS(PROW()+linha,col);DEVOUT(CHR(18))
+        RETURN .T.
+ENDIF
+
+RETURN NIL
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+#INCLUDE "winuser.ch"
+
+FUNCTION atencao(men,tipo)
+
+IF tipo = NIL
+        WVW_MessageBox( ,men,' ATENCAO ',MB_ICONWARNING)
+ELSE
+        WVW_MessageBox( ,men,' ATENCAO ',MB_ICONERROR )
+ENDIF
+RETURN .T.
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION ver_dia(mv)
+
+LOCAL mdia
+IF dow(mv)=1
+        mdia := 'DOMINGO'
+ELSEIF dow(mv)=2
+        mdia := 'SEGUNDA FEIRA'
+ELSEIF dow(mv)=3
+        mdia := 'TERCA FEIRA'
+ELSEIF dow(mv)=4
+        mdia := 'QUARTA FEIRA'
+ELSEIF dow(mv)=5
+        mdia := 'QUINTA FEIRA'
+ELSEIF dow(mv)=6
+        mdia := 'SEXTA FEIRA'
+ELSEIF dow(mv)=7
+        mdia := 'SABADO'
+ENDIF
+RETURN mdia
+
+************************* F I M ***************************************************
+* FUNCAO DE CORES
+***********************************************************************************
+
+FUNCTION setcor(nTipCor,mtipo)
+
+IF nTipCor = 1 .AND. mtipo = NIL
+        SETCOLOR('B+/W*,W/B,,,N/W*')
+ELSEIF nTipCor = 2 .AND. mtipo = NIL
+        SETCOLOR('W*/B,W/N,,,N/W*')                     && cor para os SAY
+ELSEIF nTipCor = 3 .AND. mtipo = NIL
+        SETCOLOR('n/W*,W/n,x')                     && cor para os SAY
+ELSEIF nTipCor = 4 .AND. mtipo = NIL
+        SETCOLOR('W/B+,B/w*,,,GR+/B')
+ELSEIF nTipCor = 5 .AND. mtipo = NIL
+        SETCOLOR('R*/W*,W/R,,,GR+/B')
+ELSEIF nTipCor = 10 .AND. mtipo = NIL
+        SETCOLOR('b*/w*,w/b,,,b/w')
+ELSEIF nTipCor = 30 .AND. mtipo = NIL
+        SETCOLOR('b/w,b/w,x')                     && cor para os SAY
+ELSEIF nTipCor = 31 .AND. mtipo = NIL
+        SETCOLOR('r+/w*,w/b+,x')                     && cor para os SAY
+ELSE
+        SETCOLOR('n/W*,B/w*,,,gr+/n')
+ENDIF
+RETURN .T.
+
+************************* F I M ***************************************************
+* EXIBIR O PRG
+***********************************************************************************
+
+FUNCTION exibi_prg(vprg)
+
+//WVW_SBSetText(mnum_principal,1,vprg)
+WVW_SBSetText(mn_sac0,0,vprg)
+RETURN NIL
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION CALCU()
+
+IF ! MYRUN2('c:\windows\system32\calc.exe')
+	atencao('NAO FOI ENCONTRADA A CALCULADORA COM WINDOWS FAVOR ENTRAR EM CONTATO COM O GERENTE DOS COMPUTADORES....')
+ENDIF
+RETURN  NIL
+
+************************* F I M ***************************************************
+* mensagem dos GET'S
+***********************************************************************************
+
+FUNCTION men_get(men_li,men_ci,mensagem,mcol)
+
+WVW_SBSetText(,1,'Mensagem: '+mensagem)
+
+RETURN .T.
+
+************************* F I M ***************************************************
+* LIMPA mensagem dos GET'S
+***********************************************************************************
+
+FUNCTION lim_get
+
+WVW_SBSetText(,1,' ')
+RETURN .T.
+
+************************* F I M ***************************************************
+* FUNCAO PARA ABRIR ARQUIVOS
+***********************************************************************************
+
+FUNCTION AbriArq(arq,al,tp,sit,vlocal,vext,vcamin,vmens)
+
+LOCAL mcam:='',mcamcfg,mlocal:='',mestacao:='',mver:='',m_cfg1:={}
+SET AUTOPEN ON
+IF SELECT(al) > 0 .AND. tp = NIL
+        RETURN .T.
+ENDIF
+mensagem('Aguarde tentando acessar ao arquivo: '+arq)
+WHILE .T.
+        IF sit = NIL
+                IF tp = 'E'
+                        IF SELECT(al) > 0
+                                (al)->(DBCLOSEAREA())
+                        ENDIF
+                        USE (arq) ALIAS (al) EXCLUSIVE NEW VIA 'SQLRDD'
+                        IF ! NETERR()
+                                RETURN .T.
+                        ELSE
+                                atencao('Este ARQUIVO esta sendo usado por outro usuario, Aguarde...Tentando Acesso ao Arquivo: '+UPPER(arq)+' EXCLUSIVO')
+                        ENDIF
+                ELSE
+                        IF SELECT(al) > 0
+                                RETURN .T.
+                        ENDIF
+                        USE (arq) ALIAS (al) SHARED NEW VIA 'SQLRDD'
+                        IF ! NETERR()
+                                RETURN .T.
+                        ELSE
+                                atencao('Este ARQUIVO esta sendo usado EXCLUSIVO por outro usuario, Aguarde...Tentando Acesso ao Arquivo: '+UPPER(arq)+' COMPARTILHADO')
+                        ENDIF
+                ENDIF
+                IF LASTKEY() = 27
+                        atencao('Nao foi possivel acessar este Arquivo: '+mcam+UPPER(arq))
+                        RETURN .F.
+                ENDIF
+        ELSE
+                IF tp = 'E'
+                        IF SELECT(al) > 0
+                                (al)->(DBCLOSEAREA())
+                        ENDIF
+                        USE (arq) ALIAS (al) EXCLUSIVE NEW VIA 'DBFCDX'
+                        IF ! NETERR()
+
+                                RETURN .T.
+                        ELSE
+                                atencao('Este ARQUIVO esta sendo usado por outro usuario, Aguarde...Tentando Acesso ao Arquivo: '+UPPER(arq)+' EXCLUSIVO')
+                        ENDIF
+                ELSE
+                        IF SELECT(al) > 0
+                                RETURN .T.
+                        ENDIF
+                        USE (arq) ALIAS (al) SHARED NEW VIA 'DBFCDX'
+                        IF ! NETERR()
+                                RETURN .T.
+                        ELSE
+                                atencao('Este ARQUIVO esta sendo usado EXCLUSIVO por outro usuario, Aguarde...Tentando Acesso ao Arquivo: '+UPPER(arq)+' COMPARTILHADO')
+                        ENDIF
+                ENDIF
+                IF LASTKEY() = 27
+                        atencao('Nao foi possivel acessar este Arquivo: '+mcam+UPPER(arq))
+                        RETURN .F.
+                ENDIF
+        ENDIF
+ENDDO
+RETURN .F.
+
+************************* F I M ***************************************************
+FUNCTION botao(l,c,ll,cc,t,titulo,lado,cor_tit,mtamanho)
+
+WVW_SetPaintRefresh(0)
+IF mtamanho = NIL
+        mtamanho := 0
+ENDIF
+IF t <> NIL
+        cc := c + 5 + LEN(t) + mtamanho
+ENDIF
+IF titulo <> NIL
+        wvw_drawboxraised(,l,c,ll,cc)
+        @ l,c clear to ll,cc
+        setcor(2)
+        IF lado = NIL
+                //WVW_DrawBoxGet(,l-1,cc-(LEN(titulo)+2),LEN(' '+titulo+' '))
+                //SETPOS(l-1,cc-(LEN(titulo)+2));DISPOUT(' '+titulo+' ')
+                WVW_DrawBoxGet(,l-1,c,cc-c+1)
+                SETPOS(l-1,c);DISPOUT(' '+titulo+SPACE((cc-c)-(LEN(titulo)+1)+1))
+        ELSE
+                WVW_DrawBoxGet(,l-1,c,cc-c+1)
+                SETPOS(l-1,c+2);DISPOUT(' '+titulo+' ')
+        ENDIF
+        setcor(1)
+ELSE
+        WVW_DrawBoxRecessed(,l,c,ll,cc)
+        @ l,c clear to ll,cc
+ENDIF
+IF t <> NIL
+        DEVPOS(l+1,c+1);DEVOUT(t)
+ENDIF
+setcor(1)
+RETURN NIL
+
+************************* F I M ***************************************************
+* LIMPA UMA AREA
+***********************************************************************************
+
+FUNCTION limpa(li,ci,lb,cb)
+
+@ li,ci CLEAR TO lb,cb
+RETURN .T.
+
+************************* F I M ***************************************************
+* OPCAO SIM OU NAO
+***********************************************************************************
+
+FUNCTION op_simnao(mtipo_op,mensagem,mtitulo)
+
+LOCAL mopcao_simnao
+mopcao_simnao := WVW_MessageBox( ,mensagem,IF(mtitulo=NIL,' Escolha a Opcao ',mtitulo),MB_YESNO + MB_ICONQUESTION + MB_SYSTEMMODAL + IF(mtipo_op = 'S',MB_DEFBUTTON1,MB_DEFBUTTON2))
+IF mopcao_simnao = 6
+        RETURN 'S'
+ELSE
+        RETURN 'N'
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* OPCAO SIM,NAO OU CANCEL
+***********************************************************************************
+
+FUNCTION op_simnaocan(mtipo_op,mensagem,mtitulo)
+
+LOCAL mopcao_simnao
+
+mopcao_simnao := WVW_MessageBox( ,mensagem,IF(mtitulo=NIL,' Escolha a Opcao ',mtitulo),MB_YESNOCANCEL + MB_ICONQUESTION + MB_SYSTEMMODAL + IF(mtipo_op = 'C',MB_DEFBUTTON3,IF(mtipo_op = 'S',MB_DEFBUTTON1,MB_DEFBUTTON2)))
+IF mopcao_simnao = 6
+        RETURN 'S'
+ELSEIF mopcao_simnao = 7
+        RETURN 'N'
+ELSE
+        RETURN 'C'
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* TESTE DE EXISTENCIA DE VENDEDOR
+***********************************************************************************
+FUNCTION ven(mcod_ven,li,ci,p)
+
+LOCAL msele,morde,msen:={}
+MEMVAR mnome_vend,mcom_ap,mcom_ven
+
+IF EMPTY(mcod_ven); RETURN .T.;END
+msele := SELE()
+morde := INDEXORD()
+mnome_vend = SPACE(30)
+msen:={}
+sr_getconnection():exec("SELECT snome,scomissao,scom_praz FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_ven,3)),,.t.,@msen)
+IF LEN(msen) = 0
+        IF p = NIL
+                atencao('Vendedor nao Cadastrado !!!')
+        ENDIF
+        mcod_ven = 0
+        RETURN .F.
+ELSE
+        mnome_vend = msen[1,1]
+        mcom_ven := msen[1,2]
+        mcom_ap := msen[1,2]
+        IF li = NIL
+                RETURN .T.
+        ELSE
+                setcor(3)
+                DEVPOS(li,ci);DEVOUT(mnome_vend)
+                setcor(1)
+                RETURN .T.
+        ENDIF
+ENDIF
+RETURN NIL
+************************* F I M ***************************************************
+Function PegaChar
+
+SETPOS(25,00)
+RETURN Inkey(0)
+
+************************* F I M ***************************************************
+// Function PegaSenha
+// Programada por Paulo Nasi em 29.06.1993
+// Pega senha digitada pela usuario
+
+Procedure PegaSenha ( Senha, LinSenha, ColSenha , cor,mtamanho )
+
+#include 'INKEY.CH'
+Local SenhaTamMax  := 8
+Local CharDigitado
+Local SenhaTela    := ""
+IF mtamanho <> NIL
+	senhatammax := mtamanho
+ENDIF
+limpa(linsenha,colsenha,linsenha,colsenha+9)
+WHILE Len(SenhaTela) <= SenhaTamMax
+   CharDigitado := PegaChar()
+   Do CASE
+      CASE CharDigitado >= 97 .And. CharDigitado <= 122   /* ALFA MINUSCULA */
+           Senha     := Senha + Upper(Chr(CharDigitado))
+           SenhaTela := SenhaTela + "*"
+      CASE CharDigitado >= 65 .And. CharDigitado <= 90    /* ALFA MAIUSCULA */
+           Senha     := Senha + Chr(CharDigitado)
+           SenhaTela := SenhaTela + "*"
+      CASE CharDigitado >= 48 .And. CharDigitado <= 57    /* NUMERICO */
+           Senha     := Senha + Chr(CharDigitado)
+           SenhaTela := SenhaTela + "*"
+      CASE (CharDigitado = K_LEFT) .Or. (CharDigitado = K_BS)
+           IF Len(Senha) != 0
+              Senha     := Left(Senha,Len(Senha)-1)
+              SenhaTela := Left(SenhaTela,Len(SenhaTela)-1)
+           ENDIF
+      CASE CharDigitado = K_ENTER
+           EXIT
+      CASE CharDigitado = K_ESC
+           Senha := "NAO"
+           EXIT
+   EndCASE
+   IF cor <> NIL
+          SETCOLOR(cor)
+   ENDIF
+   @ LinSenha,ColSenha Say PadR(SenhaTela,SenhaTamMax)
+ENDDO
+RETURN
+
+************************* F I M ***************************************************
+* FUNCAO TENTA ADICIONAR REGISTRO NO ARQUIVO EM REDE
+***********************************************************************************
+FUNCTION adireg
+
+APPEND BLANK
+IF ! NETERR()
+        RETURN .T.
+ENDIF
+WHILE LASTKEY() <> 27
+        mensagem('Aguarde...Acessando o Arquivo: '+ALIAS(SELE()))
+        APPEND BLANK
+        IF ! NETERR()
+                RETURN .T.
+        ENDIF
+ENDDO
+RETURN .F.
+
+************************* F I M ***************************************************
+* FUNCAO PARA CRIPTOGRAFAR
+***********************************************************************************
+
+FUNCTION cripto(mexp,q,mprod)
+
+LOCAL mletra:={},maux:={},msenha,i
+IF LASTKEY() = 27
+        RETURN .F.
+ENDIF
+//IF LEN(mexp) < 2 .OR. (LEN(mexp) > 8 .AND. q = NIL)
+IF (LEN(mexp) > 8 .AND. q = NIL)
+        atencao('Senha Invalida !!!')
+        RETURN .F.
+ENDIF
+msenha := ''
+mexp := UPPER(mexp)
+i:=0
+FOR i = 1 TO LEN(mexp)
+        AADD(mletra,SUBSTR(mexp,i,1))
+NEXT
+i:=0
+FOR i = 1 TO LEN(mexp)
+        IF mletra[i] = 'A'
+                AADD(maux,CHR(189)) //¢
+        ELSEIF mletra[i] = 'B'
+                AADD(maux,CHR(184)) //©
+        ELSEIF mletra[i] = 'C'
+                AADD(maux,CHR(154)) //Ü
+        ELSEIF mletra[i] = 'D'
+                AADD(maux,CHR(181)) //Á
+        ELSEIF mletra[i] = 'E'
+                AADD(maux,CHR(228)) //õ
+        ELSEIF mletra[i] = 'F'
+                AADD(maux,CHR(230)) //µ
+        ELSEIF mletra[i] = 'G'
+                AADD(maux,CHR(232)) //Þ
+        ELSEIF mletra[i] = 'H'
+                AADD(maux,CHR(218)) //+
+        ELSEIF mletra[i] = 'I'
+                AADD(maux,CHR(204)) //¦
+        ELSEIF mletra[i] = 'J'
+                AADD(maux,CHR(236)) //ý
+        ELSEIF mletra[i] = 'K'
+                AADD(maux,CHR(231)) //þ
+        ELSEIF mletra[i] = 'L'
+                AADD(maux,CHR(245)) //§
+        ELSEIF mletra[i] = 'M'
+                AADD(maux,CHR(225)) //ß
+        ELSEIF mletra[i] = 'N'
+                AADD(maux,CHR(237)) //Ý
+        ELSEIF mletra[i] = 'O'
+                AADD(maux,CHR(224)) //Ó
+        ELSEIF mletra[i] = 'P'
+                AADD(maux,CHR(208))
+        ELSEIF mletra[i] = 'Q'
+                AADD(maux,CHR(166))
+        ELSEIF mletra[i] = 'R'
+                AADD(maux,CHR(168))
+        ELSEIF mletra[i] = 'S'
+                AADD(maux,CHR(172))
+        ELSEIF mletra[i] = 'T'
+                AADD(maux,CHR(157))
+        ELSEIF mletra[i] = 'U'
+                AADD(maux,CHR(140))
+        ELSEIF mletra[i] = 'W'
+                AADD(maux,CHR(174))
+        ELSEIF mletra[i] = 'V'
+                AADD(maux,CHR(20))
+        ELSEIF mletra[i] = 'X'
+                AADD(maux,CHR(223))
+        ELSEIF mletra[i] = 'Y'
+                AADD(maux,CHR(239))
+        ELSEIF mletra[i] = 'Z'
+                AADD(maux,CHR(235))
+        ELSEIF mletra[i] = '0'
+                AADD(maux,CHR(251))
+        ELSEIF mletra[i] = '1'
+                AADD(maux,CHR(253))
+        ELSEIF mletra[i] = '2'
+                AADD(maux,CHR(252))
+        ELSEIF mletra[i] = '3'
+                AADD(maux,CHR(248))
+        ELSEIF mletra[i] = '4'
+                AADD(maux,CHR(216))
+        ELSEIF mletra[i] = '5'
+                AADD(maux,CHR(200))
+        ELSEIF mletra[i] = '6'
+                AADD(maux,CHR(136))
+        ELSEIF mletra[i] = '7'
+                AADD(maux,CHR(127))
+        ELSEIF mletra[i] = '8'
+                AADD(maux,CHR(21))
+        ELSEIF mletra[i] = '9'
+                AADD(maux,CHR(23))
+        ELSEIF mletra[i] = ' '
+                AADD(maux,'0')
+        ELSEIF mletra[i] = '*'
+                AADD(maux,'1')
+        ELSEIF mletra[i] = '-'
+                AADD(maux,'2')
+        ELSEIF mletra[i] = '/'
+                AADD(maux,'3')
+        ELSEIF mletra[i] = '.'
+                AADD(maux,'4')
+        ELSEIF mletra[i] = ','
+                AADD(maux,'5')
+        ELSEIF mletra[i] = '"'
+                AADD(maux,'A')
+        ELSEIF mletra[i] = "'"
+                AADD(maux,'6')
+        ELSEIF mletra[i] = '('
+                AADD(maux,'7')
+        ELSEIF mletra[i] = ')'
+                AADD(maux,'8')
+        ELSEIF mletra[i] = '='
+                AADD(maux,'9')
+        ELSEIF mletra[i] = '%'
+                AADD(maux,'B')
+        ELSEIF mletra[i] = '*'
+                AADD(maux,'C')
+        ELSEIF mletra[i] = '+'
+                AADD(maux,'D')
+        ELSEIF mletra[i] = '@'
+                AADD(maux,'E')
+        ELSEIF mletra[i] = ']'
+                AADD(maux,'F')
+        ELSEIF mletra[i] = '['
+                AADD(maux,'G')
+        ELSEIF mletra[i] = '{'
+                AADD(maux,'I')
+        ELSEIF mletra[i] = '}'
+                AADD(maux,'J')
+        ELSEIF mletra[i] = '&'
+                AADD(maux,'K')
+        ELSEIF mletra[i] = '#'
+                AADD(maux,'L')
+        ELSEIF mletra[i] = '!'
+                AADD(maux,'M')
+        ELSEIF mletra[i] = ':'
+                AADD(maux,'N')
+        ELSEIF mletra[i] = ';'
+                AADD(maux,'O')
+        ELSEIF mletra[i] = '?'
+                AADD(maux,'P')
+        ELSEIF mletra[i] = '|'
+                AADD(maux,'Q')
+        ELSEIF mletra[i] = '\'
+                AADD(maux,'R')
+        ELSEIF mletra[i] = 'ç'
+                AADD(maux,'S')
+        ELSEIF mletra[i] = 'Ç'
+                AADD(maux,'T')
+        ELSEIF mletra[i] = 'Ã'
+                AADD(maux,'U')
+        ELSEIF mletra[i] = 'ã'
+                AADD(maux,'V')
+        ELSEIF mletra[i] = 'Õ'
+                AADD(maux,'X')
+        ELSEIF mletra[i] = 'õ'
+                AADD(maux,'Y')
+        ELSEIF mletra[i] = 'Á'
+                AADD(maux,'Z')
+        ELSEIF mletra[i] = 'á'
+                AADD(maux,'a')
+        ELSEIF mletra[i] = 'º'
+                AADD(maux,'b')
+        ELSEIF mletra[i] = 'ª'
+                AADD(maux,'c')
+        ELSEIF mletra[i] = NIL
+                AADD(maux,'d')
+        ELSE
+                AADD(maux,'_')
+        ENDIF
+NEXT
+i:=0
+IF LEN(mexp) = 1
+        msenha := maux[1]
+ELSE
+        msenha := maux[2] + maux[1]
+        FOR i = 3 TO LEN(mexp)
+                msenha := msenha + maux[i]
+        NEXT
+ENDIF
+RETURN msenha
+
+************************* F I M ***************************************************
+* FUNCAO PARA DES-CRIPTOGRAFAR
+***********************************************************************************
+
+FUNCTION dcripto(mexp)
+
+LOCAL mletra:={},maux:={},msenha,i
+ASIZE(mletra,0)
+ASIZE(maux,0)
+msenha := ''
+i:=0
+FOR i = 1 TO LEN(mexp)
+        IF SUBSTR(mexp,i,1) = ' ' .OR. SUBSTR(mexp,i,1) = NIL
+                LOOP
+        ENDIF
+        AADD(mletra,SUBSTR(mexp,i,1))
+NEXT
+i:=0
+IF EMPTY(mletra)
+        RETURN NIL
+ENDIF
+FOR i = 1 TO LEN(mletra)
+        IF mletra[i] = CHR(189)
+                AADD(maux,'A')
+        ELSEIF mletra[i] = CHR(184)
+                AADD(maux,'B')
+        ELSEIF mletra[i] = CHR(154)
+                AADD(maux,'C')
+        ELSEIF mletra[i] = CHR(181)
+                AADD(maux,'D')
+        ELSEIF mletra[i] = CHR(228)
+                AADD(maux,'E')
+        ELSEIF mletra[i] = CHR(230)
+                AADD(maux,'F')
+        ELSEIF mletra[i] = CHR(232)
+                AADD(maux,'G')
+        ELSEIF mletra[i] = CHR(218)
+                AADD(maux,'H')
+        ELSEIF mletra[i] = CHR(204)
+                AADD(maux,'I')
+        ELSEIF mletra[i] = CHR(236)
+                AADD(maux,'J')
+        ELSEIF mletra[i] = CHR(231)
+                AADD(maux,'K')
+        ELSEIF mletra[i] = CHR(245)
+                AADD(maux,'L')
+        ELSEIF mletra[i] = CHR(225)
+                AADD(maux,'M')
+        ELSEIF mletra[i] = CHR(237)
+                AADD(maux,'N')
+        ELSEIF mletra[i] = CHR(224)
+                AADD(maux,'O')
+        ELSEIF mletra[i] = CHR(208)
+                AADD(maux,'P')
+        ELSEIF mletra[i] = CHR(166)
+                AADD(maux,'Q')
+        ELSEIF mletra[i] = CHR(168)
+                AADD(maux,'R')
+        ELSEIF mletra[i] = CHR(172)
+                AADD(maux,'S')
+        ELSEIF mletra[i] = CHR(157)
+                AADD(maux,'T')
+        ELSEIF mletra[i] = CHR(140)
+                AADD(maux,'U')
+        ELSEIF mletra[i] = CHR(174)
+                AADD(maux,'W')
+        ELSEIF mletra[i] = CHR(20)
+                AADD(maux,'V')
+        ELSEIF mletra[i] = CHR(223)
+                AADD(maux,'X')
+        ELSEIF mletra[i] = CHR(239)
+                AADD(maux,'Y')
+        ELSEIF mletra[i] = CHR(235)
+                AADD(maux,'Z')
+        ELSEIF mletra[i] = CHR(251)
+                AADD(maux,'0')
+        ELSEIF mletra[i] = CHR(253)
+                AADD(maux,'1')
+        ELSEIF mletra[i] = CHR(252)
+                AADD(maux,'2')
+        ELSEIF mletra[i] = CHR(248)
+                AADD(maux,'3')
+        ELSEIF mletra[i] = CHR(216)
+                AADD(maux,'4')
+        ELSEIF mletra[i] = CHR(200)
+                AADD(maux,'5')
+        ELSEIF mletra[i] = CHR(136)
+                AADD(maux,'6')
+        ELSEIF mletra[i] = CHR(127)
+                AADD(maux,'7')
+        ELSEIF mletra[i] = CHR(21)
+                AADD(maux,'8')
+        ELSEIF mletra[i] = CHR(23)
+                AADD(maux,'9')
+        ELSEIF mletra[i] = '0'
+                AADD(maux,' ')
+        ELSEIF mletra[i] = '1'
+                AADD(maux,'*')
+        ELSEIF mletra[i] = '2'
+                AADD(maux,'-')
+        ELSEIF mletra[i] = '3'
+                AADD(maux,'/')
+        ELSEIF mletra[i] = '4'
+                AADD(maux,'.')
+        ELSEIF mletra[i] = '5'
+                AADD(maux,',')
+        ELSEIF mletra[i] = 'A'
+                AADD(maux,'"')
+        ELSEIF mletra[i] = '6'
+                AADD(maux,"'")
+        ELSEIF mletra[i] = '7'
+                AADD(maux,'(')
+        ELSEIF mletra[i] = '8'
+                AADD(maux,')')
+        ELSEIF mletra[i] = '9'
+                AADD(maux,'=')
+        ELSEIF mletra[i] = 'B'
+                AADD(maux,'%')
+        ELSEIF mletra[i] = 'C'
+                AADD(maux,'*')
+        ELSEIF mletra[i] = 'D'
+                AADD(maux,'+')
+        ELSEIF mletra[i] = 'E'
+                AADD(maux,'@')
+        ELSEIF mletra[i] = 'F'
+                AADD(maux,']')
+        ELSEIF mletra[i] = 'G'
+                AADD(maux,'[')
+        ELSEIF mletra[i] = 'I'
+                AADD(maux,'{')
+        ELSEIF mletra[i] = 'J'
+                AADD(maux,'}')
+        ELSEIF mletra[i] = 'K'
+                AADD(maux,'&')
+        ELSEIF mletra[i] = 'L'
+                AADD(maux,'#')
+        ELSEIF mletra[i] = 'M'
+                AADD(maux,'!')
+        ELSEIF mletra[i] = 'N'
+                AADD(maux,':')
+        ELSEIF mletra[i] = 'O'
+                AADD(maux,';')
+        ELSEIF mletra[i] = 'P'
+                AADD(maux,'?')
+        ELSEIF mletra[i] = 'Q'
+                AADD(maux,'|')
+        ELSEIF mletra[i] = 'R'
+                AADD(maux,'\')
+        ELSEIF mletra[i] = 'S'
+                AADD(maux,'ç')
+        ELSEIF mletra[i] = 'Ç'
+                AADD(maux,'Ç')
+        ELSEIF mletra[i] = 'U'
+                AADD(maux,'Ã')
+        ELSEIF mletra[i] = 'V'
+                AADD(maux,'ã')
+        ELSEIF mletra[i] = 'X'
+                AADD(maux,'Õ')
+        ELSEIF mletra[i] = 'Y'
+                AADD(maux,'õ')
+        ELSEIF mletra[i] = 'Z'
+                AADD(maux,'Á')
+        ELSEIF mletra[i] = 'A'
+                AADD(maux,'á')
+        ELSEIF mletra[i] = 'b'
+                AADD(maux,'º')
+        ELSEIF mletra[i] = 'c'
+                AADD(maux,'ª')
+        ELSEIF mletra[i] = 'd'
+                AADD(maux,NIL)
+        ELSE
+                AADD(maux,'_')
+        ENDIF
+NEXT
+IF LEN(mexp) = 1
+        msenha := maux[1]
+ELSE
+        i:=0
+        msenha := maux[2] + maux[1]
+        FOR i = 3 TO LEN(maux)
+                msenha := msenha + maux[i]
+        NEXT
+ENDIF
+RETURN msenha
+
+************************* F I M ***************************************************
+* VER NIVEL DE ACESSO
+***********************************************************************************
+
+FUNCTION ver_nivel(mmodulo,mdescri,mnivel,mconf_nivel,mamb,mopera)
+
+LOCAL msele,morde,mtela_nivel,cons_nivel:={}
+
+msele := 0
+IF ver_modulo(mmodulo)
+        RETURN .T.
+ENDIF
+IF mnum_principal <> NIL
+        exibi_prg(mmodulo)
+ENDIF
+mmodulo := mmodulo+SPACE(20-LEN(mmodulo))
+WHILE .T.
+        cons_nivel := {}
+        sr_getconnection():exec("SELECT * FROM sacconf WHERE modulo = "+sr_cdbvalue(mmodulo),,.t.,@cons_nivel)
+        IF LEN(cons_nivel) > 0
+                sr_begintransaction()
+                        try
+                                sr_getconnection():exec("UPDATE sacconf SET descri = "+sr_cdbvalue(SUBSTR(mdescri,1,60))+" WHERE modulo = "+sr_cdbvalue(mmodulo),,.f.)
+                                sr_getconnection():exec("COMMIT",,.f.)
+                                sr_committransaction()
+                        catch e
+                                tracelog(valtoprg())
+                                sr_rollbacktransaction()
+                        END
+                sr_endtransaction()
+
+                IF (mopera = '999' .OR. cod_operado = '999')
+                        RETURN .T.
+                ENDIF
+                IF RAT(IF(EMPTY(SUBSTR(mconf_nivel,1,1)),'*',SUBSTR(mconf_nivel,1,1)),cons_nivel[1,3]) = 0 .AND. RAT(IF(EMPTY(SUBSTR(mconf_nivel,2,1)),'*',SUBSTR(mconf_nivel,2,1)),cons_nivel[1,3]) = 0
+                        IF mamb = NIL
+                                atencao(mdescri+' - ACESSO NAO AUTORIZADO PARA ESTE AMBIENTE - NIVEL: '+mconf_nivel,2)
+                                IF ! aut_sen(mdescri+' - Senha de Liberacao do Ambiente:','LIB_AMB',,'',,'AMBIE')
+                                        RETURN .F.
+                                ELSE
+                                        RETURN .T.
+                                ENDIF
+                        ELSE
+                                RETURN .F.
+                        ENDIF
+                ELSE
+                        RETURN .T.
+                ENDIF
+        ELSE
+                sr_getconnection():exec('INSERT INTO sacconf (modulo,descri,'+;
+                        'nivel,SR_DELETED )'+;
+                        ' VALUES ('+;
+                        sr_cdbvalue(ALLTRIM(mmodulo))+','+; //1
+                        sr_cdbvalue(SUBSTR(mdescri,1,60))+','+; //2
+                        sr_cdbvalue(ALLTRIM(mnivel))+','+; //3
+                        sr_cdbvalue(' ')+')',,.f.)
+                sr_getconnection():exec("COMMIT",,.f.)
+        ENDIF
+ENDDO
+RETURN .T.
+
+************************* F I M ***************************************************
+* VER NIVEL DE MODULO
+***********************************************************************************
+
+FUNCTION ver_modulo(mmodulo)
+
+LOCAL msele,morde,mtela_nivel,mcons_nivel:={}
+
+mmodulo := mmodulo+SPACE(20-LEN(mmodulo))
+mcons_nivel := {}
+sr_getconnection():exec("SELECT * FROM sacconf WHERE modulo = "+sr_cdbvalue(mmodulo),,.t.,@mcons_nivel)
+IF LEN(mcons_nivel) > 0 .AND. SUBSTR(mcons_nivel[1,3],1,1) = '0'
+        RETURN .T.
+ELSE
+        RETURN .F.
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* TIPO DE IMPRESSAO  ARQUIVOS OU IMPRESSORA
+***********************************************************************************
+FUNCTION imp_arq(imp_arq,mporta,op,linha,comp,mens,msenha_lib,mexcel)
+*********************************************************************
+PUBLIC mtp_impre:=0
+mimp_tipo :=0
+mporta_imp:=mtipo_imp :=' '
+mnome_arq := imp_arq
+setcor(1)
+op_tela(03,10,14,98,' Configuracao de IMPRESSAO - Arquivo: '+ALLTRIM(mnome_arq),,1)
+WvW_ClearGetVarList()
+IF op = NIL
+        op := 'S'
+ENDIF
+IF mporta = NIL
+        mporta := 'R'
+ENDIF
+mnome_arq := ALLTRIM(IF(LEN(m_indiv)>0,m_indiv[1,5],mdefcam_imp))+imp_arq+SPACE(50-LEN(ALLTRIM(IF(LEN(m_indiv)>0,m_indiv[1,5],mdefcam_imp))+imp_arq))
+mtp_impre:=0
+WHILE .T.
+        imp_arq := mnome_arq
+        mimp_tipo := 1
+
+        IF mporta = 'R'
+                mtipo_imp  := IF(LEN(m_indiv)>0,m_indiv[1,18],'J')
+        ELSEIF mporta = 'T'
+                mtipo_imp  := IF(LEN(m_indiv)>0,m_indiv[1,10],'J')
+        ELSEIF mporta = 'D'
+                mtipo_imp  := IF(LEN(m_indiv)>0,m_indiv[1,18],'J')
+        ELSEIF mporta = 'B'
+                mtipo_imp  := IF(LEN(m_indiv)>0,m_indiv[1,10],'J')
+        ELSEIF mporta = 'N'
+                mtipo_imp  := 'M'
+        ELSEIF mporta = 'K'
+                mtipo_imp  := IF(LEN(m_indiv)>0,m_indiv[1,10],'J')
+        ELSE
+                mtipo_imp  := 'M'
+        ENDIF
+	IF mtipo_imp = 'M'
+		mtp_impre:=1
+	ELSE
+		mtp_impre:=2
+	ENDIF
+        limpa(00,00,30,80)
+        setcor(1)
+        @ 4,0 TO 4,70
+        DEVPOS(6,1);DEVOUT('Tipo da Impressora [J]ato [M]atriz...:')
+        DEVPOS(8,1);DEVOUT('Nome do Arquivo de impressao.........:')
+        //DEVPOS(9,1);DEVOUT('Porta Impressora.....................:')
+        //DEVPOS(10,1);DEVOUT('Diminuir Espacos entre Linhas [s/N]..:')
+        botao1(5,40,7,53)
+        botao1(5,56,7,69)
+        setcor(3)
+        DEVPOS(6,41);DEVOUT(' MATRICIAL  ')
+        DEVPOS(6,57);DEVOUT(' JATO TINTA ')
+        setcor(1)
+
+        botao1(1,02,3,15)
+        botao1(1,20,3,33)
+        botao1(1,37,3,50)
+        botao1(1,55,3,68)
+        botao1(1,73,3,86)
+        @ 2,03 PROMPT ' IMPRESSORA '
+        @ 2,21 PROMPT '  CONSULTA  '        //+marq
+        @ 2,38 PROMPT '  ARQUIVO   '        //+marq
+        IF mexcel <> NIL
+                @ 2,56 PROMPT '   EXCEL    '        //+marq
+        ELSE
+                @ 2,56 PROMPT ' Nao Disp.  '        //+marq
+        ENDIF
+        @ 2,74 PROMPT         'ENVIAR EMAIL'        //+marq
+        SET INTEN ON
+        MENU TO mimp_tipo
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+        IF ! mimp_tipo = 3 .AND. ! mimp_tipo = 5 .AND. ! mimp_tipo = 2
+                @ 6,41 PROMPT ' MATRICIAL  '
+                @ 6,57 PROMPT ' JATO TINTA '
+                SET INTEN ON
+                MENU TO mtp_impre
+                IF LASTKEY() = 27
+                        LOOP
+                ENDIF
+                mtipo_imp := 'M'
+                /*
+                IF mtp_impre = 1
+                        mtipo_imp := 'M'
+                ELSE
+                        mtipo_imp := 'M'
+                ENDIF
+                */
+        ENDIF
+        IF mimp_tipo = 2
+                mtipo_imp := 'M'
+        ENDIF
+        IF mimp_tipo = 4
+                IF mexcel = NIL
+                        atencao('Esta opcao nao estar disponivel para este Relatorio')
+                ENDIF
+        ENDIF
+        imp_arq := ALLTRIM(IF(LEN(m_indiv)>0,m_indiv[1,5],mdefcam_imp))+'HRB.REL'
+        /*
+        IF (mtipo_imp = 'J' .AND. mimp_tipo = 1)
+                //mimp_tipo := 3
+                //mtipo_imp := 'D'
+                imp_arq := ALLTRIM(m_indiv[1,5])+'HRB.REL'
+        ELSEIF (mimp_tipo = 2 .AND.  m_set[1,41] = 'P')
+                imp_arq := ALLTRIM(m_indiv[1,5])+'HRB.REL'
+        ELSE
+        */
+                IF mimp_tipo = 1 .AND. ! EMPTY(mens)
+                        IF msenha_lib = 'IMP_2VIAPED'
+                                IF ! ver_nivel('IMP_ARQ2VIA','" IMPRESSAO " DA 2a.VIA DE PEDIDO','12345',nivel_acess,,'AMBIE')
+                                        LOOP
+                                ENDIF
+                        ELSE
+                                IF ! aut_sen('Senha de autorizacao '+mens,msenha_lib)
+                                        LOOP
+                                ENDIF
+                        ENDIF
+                ELSEIF mimp_tipo = 2
+                        mtipo_imp := 'M'
+                ELSEIF mimp_tipo = 3 .OR. mimp_tipo = 5
+                        IF ! ver_nivel('IMP_ARQ','IMPRESSAO PARA ARQUIVO','17',nivel_acess,,'AMBIE')
+                                LOOP
+                        ENDIF
+                        mporta := 'PRN '
+                        @ 08,40 GET imp_arq PICT '@S30!' VALID IF(EMPTY(imp_arq),.F.,.T.)
+                        READ
+                        IF LASTKEY() = 27
+                                LOOP
+                        ENDIF
+                ELSEIF mimp_tipo = 4
+                        IF ! ver_nivel('IMP_ARQ','IMPRESSAO PARA ARQUIVO','17',nivel_acess,,'AMBIE')
+                                LOOP
+                        ENDIF
+                        mporta := 'PRN '
+                        imp_arq := SUBSTR(imp_arq,1,LEN(ALLTRIM(imp_arq))-4)+'.XLS'+SPACE(10)
+                        @ 08,40 GET imp_arq PICT '@S30!' VALID IF(EMPTY(imp_arq),.F.,.T.)
+                        READ
+                        IF LASTKEY() = 27
+                                LOOP
+                        ENDIF
+                        marq := ALLTRIM(imp_arq)
+                ENDIF
+        //ENDIF
+        //@ 9,40 GET mporta_imp PICT '@!' WHEN mimp_tipo = 1 VALID mporta_imp $ 'LPT1,LPT2,LPT3,LPT4,LPT5,COM1,COM2,COM3,COM4,PRN ' .AND. IF(EMPTY(mporta_imp),.F.,.T.)
+        //@ 10,40 GET comp PICT '@!' WHEN comp <> NIL VALID comp $ 'S,N'
+        //READ
+        IF LASTKEY() = 27
+                LOOP
+        ENDIF
+        IF mimp_tipo > 2
+                setcor(3)
+                DEVPOS(08,40);DEVOUT(imp_arq)
+                setcor(1)
+        ENDIF
+        op := op_simnao('S','Confirma Impressao/Consulta [S/n]:')
+        IF op = 'S'
+                wvw_lclosewindow()
+                mensagem('Espere o final da impressao !!!')
+                IF mimp_tipo = 4
+                        RETURN .T.
+                ENDIF
+                SET DEVI TO PRINT
+                SET PRINT ON
+                /*
+                IF m_cfg[18] = '7' .AND. (mimp_tipo = 1 .OR. mimp_tipo = 2 .OR. mimp_tipo = 5)
+                        imp_arq := ALLTRIM(m_indiv[1,5])+'HRB.REL'
+                        SET PRINT TO (imp_arq)
+                ELSEIF mimp_tipo = 1
+                        SET PRINT TO (mporta_imp)
+                        IF comp <> NIL .AND. comp = 'S'
+                                imprt(mtipo_imp,'P8')
+                        ENDIF
+                ELSE
+                */
+                        imp_arq := ALLTRIM(IF(LEN(m_indiv)>0,m_indiv[1,5],mdefcam_imp))+'HRB.REL'
+                        SET PRINT TO (imp_arq)
+                //ENDIF
+                RETURN .T.
+        ELSE
+                LOOP
+        ENDIF
+ENDDO
+wvw_lclosewindow()
+RETURN .F.
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION conf_impressao(marquivo,memail,mtip)
+
+LOCAL mnome_aux:=''
+MEMVAR mnome_arq, mimp_tipo
+IF mimp_tipo = 5 .OR. mtip # NIL
+        //enviar_email(marquivo,memail,mtip)
+ELSEIF mimp_tipo = 1
+        IF mtipo_imp = 'J'
+                //MYRUN('DOSPRINTER '+IF(m_cfg[79]='2','/SEL2','/SEL')+' /DEL '+ALLTRIM(m_indiv[1,5])+'HRB.REL')
+                MYRUN('DOSPRINTER /SEL /DEL '+ALLTRIM(m_indiv[1,5])+'HRB.REL')
+        ELSEIF mtipo_imp = 'M'
+                MYRUN('DOSPRINTER /RAW /DEL '+ALLTRIM(m_indiv[1,5])+'HRB.REL')
+        ENDIF
+ELSEIF mimp_tipo = 2
+        MYRUN('DOSPRINTER /SEL2 /DEL '+ALLTRIM(m_indiv[1,5])+'HRB.REL')
+ENDIF
+RETURN
+
+************************* F I M ***************************************************
+* FINALIZA OS SISTEMAS
+***********************************************************************************
+
+FUNCTION fim(msist,mtti)
+
+LOCAL opcao,lci := 05,cci := 25,lba := 17,cba := 53,tela
+tela := SAVESCREEN(00,00,24,79)
+opcao := 0
+WHILE .T.
+        IF m_line = 'OFF'
+                CLEAR MEMORY
+                QUIT
+        ENDIF
+        IF (msist = NIL .OR. SUBSTR(msist,1,8) <> '"SISCOM"') .AND. mtti = NIL
+        SET CURSOR ON
+        sr_getconnection():exec("UPDATE insopera SET sult_fim = " + sr_cdbvalue(DATE())  +;
+                                        ",shora_fim = " + sr_cdbvalue(TIME())+;
+                                        ",sh_i_c = '     '"+;
+                                        " WHERE scod_op = " + sr_cdbvalue(cod_operado),,.f.)
+        	sr_getconnection():exec("COMMIT",,.f.)
+                SETCOLOR(cor)
+                limpa(00,00,24,79)
+                //apaga_hrb() //apaga o arquivo de controle "HRB.001"
+                sr_getconnection():exec("UPDATE insopera SET terminal = '',data_acess = NULL,hora_acess = '' WHERE scod_op = "+sr_cdbvalue(cod_operado),,.f.)
+                sr_getconnection():exec('COMMIT',,.f.)
+                CLEAR MEMORY
+                QUIT
+        ENDIF
+        IF mtti = NIL
+                setcor(3)
+                botao(lci,cci,lba,cba,,' ESCOLHA A OPCAO ')
+                botao(lci+2,cci+1,lci+4,cba-1)
+                botao(lci+5,cci+1,lci+7,cba-1)
+                botao(lci+8,cci+1,lci+10,cba-1)
+                setcor(9)
+                @ lci+3,cci+2 PROMPT '   Finalizar o sistema   ' MESSAGE '** Sai do sistema **'
+                @ lci+6,cci+2 PROMPT ' Nao finalizar o sistema ' MESSAGE '** Retorna ao sistema **'
+                //@ lci+9,cci+2 PROMPT '     Deixar na senha     ' MESSAGE '** Deixa na senha **'
+                SET INTEN ON
+                MENU TO opcao
+                IF LASTKEY() = 27
+                        RESTSCREEN(00,00,24,79,tela)
+                        setcor(1)
+                        RETURN NIL
+                ENDIF
+        ELSE
+                opcao := 1
+        ENDIF
+
+        DO CASE
+                CASE opcao = 1
+                        SET CURSOR ON
+                        SR_BEGINTRANSACTION()
+                        TRY
+                        IF mtti = NIL
+
+		        	sr_getconnection():exec("UPDATE insopera SET sult_fim = " + sr_cdbvalue(DATE())  +;
+                		                        ",shora_fim = " + sr_cdbvalue(TIME())+;
+                                		        ",sh_i_c = '     '"+;
+		                                        " WHERE scod_op = " + sr_cdbvalue(cod_operado),,.f.)
+	       			sr_getconnection():exec("COMMIT",,.f.)
+                        ENDIF
+                        //apaga_hrb() //apaga o arquivo de controle "HRB.001"
+                        sr_getconnection():exec("UPDATE insopera SET terminal = '',data_acess = NULL,hora_acess = '' WHERE scod_op = "+sr_cdbvalue(cod_operado),,.f.)
+                        sr_getconnection():exec('COMMIT',,.f.)
+                        sr_committransaction()
+                        CATCH e
+                        SR_ENDTRANSACTION()
+                        END
+                        wvw_lclosewindow()
+                        CLEAR MEMORY
+                        QUIT
+                CASE opcao = 2
+                        RESTSCREEN(00,00,24,79,tela)
+                        setcor(1)
+                        RETURN NIL
+       ENDCASE
+ENDDO
+RETURN NIL
+
+************************* F I M ***************************************************
+* ALTERAR A SENHA
+***********************************************************************************
+
+FUNCTION alt_sen(p,mfiscal)
+
+LOCAL mcont,msenha,lci,cci,lba,cba,tela,msele,morde,mmen,mcor,mponto,mponto1,;
+      mcod_oper:=0
+MEMVAR senha_acess
+mcont := 0
+cci := 10
+lci := 01
+lba := 03
+cba := 40
+mcor := SETCOLOR()
+msele := SELE()
+morde := INDEXORD()
+*-----------------------------------------------------
+IF ! AbriArq('insopera','sen');RETURN NIL;ENDIF
+*-----------------------------------------------------
+setcor(1)
+lim_get()
+op_tela(15,30,20,70,'IDENTIFICAR O OPERADOR')
+WHILE .T.
+        SR_BEGINTRANSACTION()
+        TRY
+
+        m_operador:={}
+        sr_getconnection():exec("SELECT * FROM insopera WHERE scod_op = "+sr_cdbvalue(cod_operado),,.t.,@m_operador)
+        IF LEN(m_operador) > 0
+                sr_getconnection():exec("UPDATE insopera SET sult_fim = "+sr_cdbvalue(DATE())+",shora_fim = "+sr_cdbvalue(TIME())+",sh_i_c = '     ' WHERE scod_op = "+sr_cdbvalue(cod_operado),,.f.)
+                sr_getconnection():exec('COMMIT',,.f.)
+                nivel_acess := m_operador[1,13]
+                cod_operado := m_operador[1,1]
+                senha_acess := msenha
+                IF p = NIL
+                        WVW_SBSetText(mnum_principal,4,'Operador: '+ALLTRIM(cod_operado))
+                ENDIF
+                //ver_mensa(cod_operado)          //verifica mensagens
+
+        ENDIF
+        CATCH e
+        SR_ENDTRANSACTION()
+        END
+
+        /*
+        *************
+        SELE('sen')
+        ORDSETFOCUS(2)
+        GO TOP
+        *************
+        IF sen->(DBSEEK(cod_operado))
+                mponto := RECNO()
+                IF BLOQREG()
+                        sen-> sult_fim := DATE()
+                        sen-> shora_fim := TIME()
+                        sen-> sh_i_c    := '     '
+                        nivel_acess := sen->snivel
+                        cod_operado := sen->scod_op
+                        senha_acess := msenha
+                        COMMIT
+                        UNLOCK
+                        IF p = NIL
+                                WVW_SBSetText(mnum_principal,4,'Operador: '+ALLTRIM(cod_operado))
+                        ENDIF
+                ELSE
+                        atencao('Nao foi Possivel Acessar o Arquivo')
+                        LOOP
+                ENDIF
+                ver_mensa(cod_operado)          //verifica mensagens
+        ENDIF
+        */
+        WHILE .T.
+                mcod_oper:=0
+                mensagem('Digite o Codigo e Senha do Operador...')
+                //botao(lci,cci,lba,cba,,' IDENTIFICAR O OPERADOR ','*')
+                setcor(1)
+		limpa(00,00,06,09)
+        	WVW_DrawImage( ,01,01,04,08,ALLTRIM(m_indiv[1,3])+'HRB.ICO',.T.,.F.)
+
+                DEVPOS(lci  ,cci+1);DEVOUT('Codigo Operador:')
+                DEVPOS(lci+2,cci+1);DEVOUT('Senha de Acesso:')
+                WVW_DrawBoxGet(,lci,cci+18,3)
+                WVW_DrawBoxGet(,lci+2,cci+18,10)
+                @ lci,cci+18 GET mcod_oper PICT '999' VALID IF(EMPTY(mcod_oper),.F.,ven(mcod_oper))
+                READ
+                //IF ! oper_ped(STRZERO(mcod_oper,3))
+                //        LOOP
+                //ENDIF
+                IF LASTKEY() = 27
+                        IF p = '1'
+                                SELE(msele);IF(morde>0,ORDSETFOCUS(morde),)
+                                wvw_lclosewindow()
+                                RETURN .F.
+                        ELSE
+                                LOOP
+                        ENDIF
+                ENDIF
+                m_operador:={}
+                sr_getconnection():exec("SELECT * FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.t.,@m_operador)
+		IF FILE(ALLTRIM(m_indiv[1,31])+STRZERO(mcod_oper,3)+'.jpg')
+		        WVW_DrawImage( ,01,01,04,08,ALLTRIM(m_indiv[1,31])+STRZERO(mcod_oper,3)+'.jpg',.T.,.F.)
+		ENDIF
+                IF m_operador[1,3] = 'B' .AND. STRZERO(mcod_oper,3) <> '999'
+                        atencao('Este Usuario/Operador estar Bloqueado, Procure seu Administrador...')
+                        LOOP
+                ENDIF
+
+                mensagem('Nome: '+sen->snome)
+
+                msenha = ''
+                pegasenha(@msenha,lci+2,cci+18,setcor(2))
+                setcor(1)
+                IF msenha = 'NAO'
+                        LOOP
+                ENDIF
+                mcont ++
+                IF EMPTY(msenha)
+                        atencao('Senha Incorreta Tente Novamente')
+                        LOOP
+                ENDIF
+                IF ALLTRIM(msenha) == ALLTRIM(DCRIPTO(sen->ssenha))
+                        m_operador:={}
+                        sr_getconnection():exec("SELECT * FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.t.,@m_operador)
+                        IF LEN(m_operador) > 0
+                                SR_BEGINTRANSACTION()
+                                TRY
+                                sr_getconnection():exec("UPDATE insopera SET sult_ent = "+sr_cdbvalue(DATE())+",shora_ini = "+sr_cdbvalue(TIME())+",sh_i_c = "+sr_cdbvalue(m_indiv[1,1])+" WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3)),,.f.)
+                                sr_getconnection():exec('COMMIT',,.f.)
+                                CATCH e
+                                SR_ENDTRANSACTION()
+                                END
+                                //ver_mensa(STRZERO(mcod_oper,3))          //verifica mensagens
+                                nivel_acess := m_operador[1,13]
+                                cod_operado := m_operador[1,1]
+                                senha_acess := msenha
+                                IF p = NIL
+                                        WVW_SBSetText(mnum_principal,4,'Operador: '+ALLTRIM(cod_operado))
+                                ENDIF
+                                WVW_SBSetText(mnum_principal,4,'Operador: '+ALLTRIM(cod_operado))
+                                atencao('Operador: '+cod_operado+'-'+RTRIM(sen->snome))
+                                SELE(msele);IF(morde>0,ORDSETFOCUS(morde),)
+                                //ver_mensa(cod_operado)          //verifica mensagens
+                                wvw_lclosewindow()
+                                RETURN .T.
+                        ENDIF
+                ELSE
+                        atencao('Senha Incorreta Tente Novamente')
+                        LOOP
+                ENDIF
+        ENDDO
+ENDDO
+wvw_lclosewindow()
+RETURN NIL
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION botao1(l,c,ll,cc,t,titulo,lado,cor_tit,mtamanho)
+
+WVW_SetPaintRefresh(0)
+IF mtamanho = NIL
+        mtamanho := 0
+ENDIF
+IF t <> NIL
+        cc := c + 5 + LEN(t) + 0
+ENDIF
+wvw_drawboxraised(,l,c,ll,cc)
+IF t <> NIL
+        setcolor('w/b')
+        @ l,c clear to ll,cc
+        DEVPOS(l+1,c+2);DEVOUT(t)
+ENDIF
+setcor(1)
+RETURN NIL
+
+************************* F I M ***************************************************
+* VERIFICA O DIA DA SEMANA
+***********************************************************************************
+
+FUNCTION datseman(dds)
+
+LOCAL dsemana
+IF DOW(dds) = 1
+        dsemana = 'Domingo'
+ELSEIF DOW(dds) = 2
+        dsemana = 'Segunda-feira'
+ELSEIF DOW(dds) = 3
+        dsemana = 'Terca-feira'
+ELSEIF DOW(dds) = 4
+        dsemana = 'Quarta-feira'
+ELSEIF DOW(dds) = 5
+        dsemana = 'Quinta-feira'
+ELSEIF DOW(dds) = 6
+        dsemana = 'Sexta-feira'
+ELSEIF DOW(dds) = 7
+        dsemana = 'Sabado'
+ENDIF
+RETURN dsemana
+
+************************* F I M ***************************************************
+* FUNCAO P/VERIFICAR AUTORIZACAO
+***********************************************************************************
+
+FUNCTION aut_sen(men,mdl,mlin,mnum_cli,mnum_prod,mamb,mnum_pedido)
+
+LOCAL linhas,i,lin,matencao,li,ci,la,ca,mpos,;
+      msel_sen,mord_sen,mcont,mok:=' ',linha,msenha,mn_ped:=SPACE(6),;
+      mc_cli:=SPACE(5),msel,mord,mcodaux:=SPACE(14),;
+      maut_oper:=SPACE(3),msol_aut:=' ',mpoint:=0,mcons_nivel:={}
+MEMVAR mautoriza,mnum_ped
+PRIVATE mcod_aut:=SPACE(6),mcod_oper:=0
+
+mcons_nivel := {}
+sr_getconnection():exec("SELECT * FROM sacconf WHERE modulo = "+sr_cdbvalue(mdl),,.t.,@mcons_nivel)
+IF LEN(mcons_nivel) > 0 .AND. SUBSTR(mcons_nivel[1,3],1,1) = '0'
+        RETURN .T.
+ENDIF
+msel_sen := SELE()
+mord_sen := INDEXORD()
+linha := 18
+IF ! AbriArq('saclog','log');RETURN NIL;ENDIF
+IF ! AbriArq('sacconf','conf');RETURN NIL;ENDIF
+IF ! AbriArq('insopera','sen');RETURN NIL;ENDIF
+*****************
+SELE('sen');ORDSETFOCUS(2)
+*****************
+mcont := 0
+men := RTRIM(men)
+IF LEN(men) > 70
+        mpos := 70
+        ci := 10
+ELSEIF LEN(men) < LEN(' MODULO DE LIBERACAO P/SENHA ')
+        mpos := LEN(' MODULO DE LIBERACAO P/SENHA ')    //+20
+        ci := (90-LEN(' MODULO DE LIBERACAO P/SENHA ')) / 2
+ELSE
+        mpos := LEN(men)
+        ci := (90-LEN(men)) / 2
+ENDIF
+linhas := MLCOUNT(men,mpos)
+li := 12
+IF linha <> NIL
+        IF linha + linhas + 4 > 24
+                li := 24 - (linhas + 4)
+        ELSE
+                li := linha
+        ENDIF
+ENDIF
+IF mlin <> NIL .AND. mlin < li
+        li := mlin
+ENDIF
+la := li+linhas+6
+ca := ci+1+mpos+1
+IF ca - ci < 60
+        ci := 10
+        ca := 80
+ENDIF
+op_tela(li,ci,la,ca,' MODULO DE LIBERACAO P/SENHA <<Modulo:'+mdl+'>>')
+setcor(3)
+FOR i = 1 TO  linhas
+        LIN := MEMOLINE(men,mpos,i,,)
+        //DEVPOS(i,00);DEVOUT(PADC(RTRIM(LIN),mpos))
+        DEVPOS(i,00);DEVOUT(RTRIM(LIN),mpos)
+NEXT
+@ i,0 TO i,100
+i++
+setcor(5)
+DEVPOS(i,00);DEVOUT(PADC('A U T O R I Z A C A O ',mpos))
+i++
+@ i,0 TO i,100
+WHILE mcont < 3
+        setcor(1)
+        CLEAR GETS
+        mok := ' '
+        mcod_aut := SPACE(6)
+        msol_aut := 'N'
+        setcor(1)
+        DEVPOS(i+1,00);  DEVOUT('Codigo Operador:')
+        DEVPOS(i+2,00);DEVOUT('Senha Liberacao:')
+        DEVPOS(i+3,00);DEVOUT('Solicitar [s/N]:')
+        @ i+1,18 GET mcod_oper PICT '999' VALID IF(EMPTY(mcod_oper),.F.,ven(mcod_oper,i+1,22))
+        READ
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+
+        msenha = ''
+        pegasenha(@msenha,i+2,18,setcor(2))
+        setcor(1)
+        IF msenha = 'NAO'
+                EXIT
+        ENDIF
+        IF ! EMPTY(msenha)
+                maut_oper := STRZERO(mcod_oper,3)
+        ENDIF
+        @ i+3,18 GET msol_aut PICT '@!' VALID IF(msol_aut = 'S',soli_aut(STRZERO(mcod_oper,3),mnum_cli,mnum_prod,men,mamb),.T.) WHEN EMPTY(msenha)
+        READ
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+        cons_ven:={}
+        ccomm := "SELECT scod_aut,ssenha,snivel FROM insopera WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3))
+        sr_getconnection():exec(ccomm,,.t.,@cons_ven)
+        IF LEN(cons_ven) = 0
+                atencao('Operador nao encontrado !!!!')
+                mcont ++
+                LOOP
+        ENDIF
+        DEVPOS(i+3,18);DEVOUT(mcod_aut)
+        IF mcod_aut = 'NEGATIVO'
+                atencao('Autorizacao NEGADA')
+                EXIT
+        ENDIF
+        mcod_aut := SUBSTR(cons_ven[1,1],1,6)
+        IF (! EMPTY(mnum_cli) .OR. ! EMPTY(mnum_prod) .OR. ! EMPTY(mamb)) .AND. ! EMPTY(cons_ven[1,1]) .AND. EMPTY(msenha)
+                mcodaux := mcod_aut
+                IF ! EMPTY(mnum_cli)
+                        mcodaux := mcodaux + mnum_cli
+                ELSEIF ! EMPTY(mnum_prod)
+                        mcodaux := mcodaux + mnum_prod
+                ELSEIF ! EMPTY(mamb)
+                        mcodaux := mcodaux + mamb
+                ENDIF
+                mcodaux := mcodaux+STRZERO(mcod_oper,3)
+                IF mcodaux = SUBSTR(cons_ven[1,1],1,14)
+                        msenha := ALLTRIM(DCRIPTO(cons_ven[1,2]))
+                        ccomm := "UPDATE insopera SET scod_aut = NULL WHERE scod_op = "+sr_cdbvalue(STRZERO(mcod_oper,3))
+                        sr_getconnection():exec(ccomm,,.f.)
+                        //sr_getconnection():exec('COMMIT',,.f.)
+                        mcodaux := cons_ven[1,1]
+                        maut_oper := SUBSTR(mcodaux,15,3)
+                        ven(VAL(maut_oper))
+                        msenha := ALLTRIM(DCRIPTO(cons_ven[1,2]))
+                        sr_getconnection():exec('INSERT INTO saclog (data_sis,data,hora,tipo,documento,cod_cli,aut_oper,cod_oper,modulo,descri,cod_aut,terminal'+;
+                                ',cod_prod,SR_DELETED )'+;
+                                ' VALUES ('+;
+                                sr_cdbvalue(DATE()       )+','+; //1
+                                sr_cdbvalue(mdata_sis    )+','+; //2
+                                sr_cdbvalue(TIME()       )+','+; //3
+                                sr_cdbvalue('AUTORIZACA')+','+; //4
+                                sr_cdbvalue(mn_ped       )+','+; //5
+                                sr_cdbvalue(mc_cli       )+','+; //6
+                                sr_cdbvalue(maut_oper    )+','+; //7
+                                sr_cdbvalue(cod_operado  )+','+; //8
+                                sr_cdbvalue(mcons_nivel[1,1])+','+;//9
+                                sr_cdbvalue(SUBSTR(ALLTRIM(mcons_nivel[1,2])+IF(mnum_pedido = NIL,'',' '+mnum_pedido),1,60))+','+;//10
+                                sr_cdbvalue(mcodaux      )+','+; //11
+                                sr_cdbvalue(LEFT(NETNAME(),15))+','+; //12
+                                sr_cdbvalue(IF(mnum_prod = NIL,'',mnum_prod))+','+; //13
+                                sr_cdbvalue(' ')+')',,.f.)
+                        sr_getconnection():exec("COMMIT",,.f.)
+                        mok:='*'
+                        *********************
+                        SELE(msel_sen);IF(mord_sen>0,ORDSETFOCUS(mord_sen),)
+                        *********************
+                        wvw_lclosewindow()
+                        RETURN .T.
+                ELSEIF EMPTY(mcod_aut)
+                        msenha = ''
+                        pegasenha(@msenha,i+2,18,setcor(2))
+                        setcor(1)
+                        IF msenha = 'NAO'
+                                EXIT
+                        ENDIF
+                        IF EMPTY(msenha)
+                                LOOP
+                        ENDIF
+                        maut_oper := STRZERO(mcod_oper,3)
+                ELSE
+                        atencao('Codigo de Autorizacao nao confere !!!')
+                        mcont ++
+                        LOOP
+                ENDIF
+        ENDIF
+        IF ALLTRIM(msenha) == ALLTRIM(DCRIPTO(cons_ven[1,2]))
+                IF mdl = 'LIB_SALDO'
+                        IF(ver_nivel(mdl,'LIBERACAO DE QUANTD.SOLICITADA MAIOR QUE O SALDO DO PRODUTO','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIBTABPAG'
+                        IF(ver_nivel(mdl,'LIBERACAO DE TABELA DE CONDICAO PAGAMENTO DIFERENTE','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+		ELSEIF mdl = 'LIB_EXPPROD'
+                        IF(ver_nivel(mdl,'LIBERACAO DE ESTORNO DE EXPEDICAO DE PRODUTO NO PEDIDO','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+		ELSEIF mdl = 'LIB_N_NOTA'
+                        IF(ver_nivel(mdl,'LIBERACAO DA ALTERACAO NO NUMERO NOTA FISCAL','135',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_SALDOADM'
+                        IF(ver_nivel(mdl,'LIBERACAO DE QUANTD.SOLICITADA MAIOR QUE A QUANTIDADE MAXIMA DA ADM','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'OPER_PED'
+                        IF(ver_nivel(mdl,'LIBERACAO DE OPERADOR COM PEDIDOS PEDENTES','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'ALT_DADOS'
+                        IF(ver_nivel(mdl,'LIBERACAO P/ALTERACAO NA ENTRADA DE MERCADORIA','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_DESC'
+                        IF(ver_nivel(mdl,'LIBERACAO DE DESCONTO A MAIOR NO PRECO DE VENDA PRODUTO','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIBDESC_PED'
+                        IF(ver_nivel(mdl,'LIBERACAO DE DESCONTO A MAIOR DO QUE O MAXIMO PERMITIDO','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_AJUST'
+                        IF(ver_nivel(mdl,'LIBERACAO DE AJUSTE DE SALDO DOS PRODUTOS','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIBSLDNF'
+                        IF(ver_nivel(mdl,'LIBERACAO DE SALDO A MENOR NA NOTA FISCAL','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_ALTSENHA'
+                        IF(ver_nivel(mdl,'LIBERACAO P/ALTERAR A SENHA','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_AMB'
+                        IF(ver_nivel(mdl,'LIBERACAO DE AMBIENTE NAO AUTORIZADO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'LIB_DATA_ENT'
+                        IF(ver_nivel(mdl,'LIBERACAO DA DATA DE ENTRADA DO SISTEMA','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3)),mok := '*',' ')
+                ELSEIF mdl = 'DESC_CX'
+                        IF ver_nivel(mdl,'LIBERACAO DE DESCONTO NO RECEBIMENTO DO PEDIDO (CAIXA)','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_ALTSLDPED'
+                        IF ver_nivel(mdl,'LIBERACAO DA QUANTIDADE NA ALTERACAO DO PEDIDO IMPRESSO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_PED_LIB'
+                        IF ver_nivel(mdl,'LIBERACAO DE PEDIDO JA LIBERADOR PELO FINANCEIRO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'PRZ_REC'
+                        IF ver_nivel(mdl,'LIBERACAO DE PRAZO MAIOR QUE ESTIPULADO NO PEDIDO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIB_DEV'
+                        IF ver_nivel(mdl,'LIBERACAO DE CLIENTE DEVEDOR, CHQ.S/FUNDO OU LIMITE ESTOURADO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIB_TAX'
+                        IF ver_nivel(mdl,'LIBERACAO DA TAXA DE ACRESCIMO NO PEDIDO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIB_PRZ'
+                        IF ver_nivel(mdl,'LIBERACAO DE PRAZO A MAIOR QUE O PERMITIDO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'CHQ_DEV'
+                        IF ver_nivel(mdl,'LIBERACAO DE CLIENTE COM *** CHEQUE SEM FUNDOS ***','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIMIT_EST'
+                        IF ver_nivel(mdl,'LIBERACAO DE CLIENTE COM *** LIMITE ESTOURADO ***','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIB_RECE'
+                        IF ver_nivel(mdl,'LIBERACAO DE SALDO A RECEBER POR CONTA','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'LIB_ORCA'
+                        IF ver_nivel(mdl,'LIBERACAO DE ORCAMENTO PRECO CUSTO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'LIB_INSC'
+                        IF ver_nivel(mdl,'LIBERACAO DE INSCRICAO ESTADUAL','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'LIBCLIVEN'
+                        IF ver_nivel(mdl,'LIBERACAO DE VENDEDOR DIFERENTE DO VENDEDOR RESP.PELO CLIENTE','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'EST_PEDEXP'
+                        IF ver_nivel(mdl,'ESTORNO DE PEDIDO EXPEDIDO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'LIB_PED'
+                        IF ver_nivel(mdl,'LIBERAR OU CANCELAR PEDIDOS','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_PED_VLR'
+                        IF ver_nivel(mdl,'LIBERAR VALOR MAIOR DO QUE O PEDIDO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_2VIAPED'
+                        IF ver_nivel(mdl,'LIBERAR 2a.VIA PEDIDO JA EMITIDO NOTA FISCAL','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'SAC101EXC'
+                        IF ver_nivel(mdl,'EXCLUSAO DE SUB-GRUPO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'SAC10EXC'
+                        IF ver_nivel(mdl,'EXCLUSAO DE GRUPO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'BALSLSAIDA'
+                        IF ver_nivel(mdl,'BALANCO ** CORRECAO DE SALDO (SAIDA) **','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'FORMPAGPED'
+                        IF ver_nivel(mdl,'LIBERACAO DA FORMA DE PAG. NA ALTERCAO DO PEDIDO (AV -> AP)','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_FORMA_PG'
+                        IF ver_nivel(mdl,'LIBERA FORMA DE PAGAMENTO NO RECEBIMENTO DE AVISTA P/APRAZO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'ABANDONAR_REC'
+                        IF ver_nivel(mdl,'LIBERA PARA ABANDONAR O RECEBIMENTO DO PEDIDO','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                                mn_ped := STRZERO(mnum_ped,6)
+                        ENDIF
+                ELSEIF mdl = 'LIB_CONDPAG'
+                        IF ver_nivel(mdl,'LIBERACAO PARA ALTERAR A CONDICAO DE PAGAMENTO PRE FIXADA DO CLIENTE','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                                mc_cli := mnum_cli
+                        ENDIF
+                ELSEIF mdl = 'LIMP_MOV'
+                        IF ver_nivel(mdl,'LIBERACAO PARA LIMPEZA DO ARQUIVO MOVIMENTO E INTEGRIDADE','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF mdl = 'LIB_REC_ENTE'
+                        IF ver_nivel(mdl,'LIBERACAO PARA 2a.VIA DO RECIBO DE ENTREGA','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+		ELSEIF mdl = 'LIB_ATU_PRECO'
+                        IF ver_nivel(mdl,'LIBERACAO DE ATUALIZACAO DE PRECOS (ENTRADA DE MERCADORIA)','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+		ELSEIF mdl = 'CAN_CUPOM'
+                        IF ver_nivel(mdl,'LIBERACAO DE CANCELAMENTO DE CUPOM FISCAL','15',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+		ELSEIF mdl = 'EXCPRDMOV'
+                        IF ver_nivel(mdl,'AUTORIZACAO PARA EXCLUSAO DE PRODUTO COM MOVIMENTO','1',cons_ven[1,3],1,STRZERO(VAL(maut_oper),3))
+                                mok := '*'
+                        ENDIF
+                ELSEIF (RAT(IF(EMPTY(SUBSTR(cons_ven[1,3],1,1)),'*',SUBSTR(cons_ven[1,3],1,1)),conf->nivel) > 0 .OR. RAT(IF(EMPTY(SUBSTR(cons_ven[1,3],2,1)),'*',SUBSTR(cons_ven[1,3],2,1)),conf->nivel) > 0) .OR. STRZERO(VAL(maut_oper),3) = 999
+                        mok := '*'
+                ENDIF
+
+                IF mok = '*'
+                        mautoriza := SPACE(3)
+                        mautoriza := cons_ven[1,1]
+                        sr_getconnection():exec('INSERT INTO saclog (data_sis,data,hora,tipo,documento,cod_cli,aut_oper,cod_oper,modulo,descri,cod_aut,terminal'+;
+                                ',cod_prod,SR_DELETED )'+;
+                                ' VALUES ('+;
+                                sr_cdbvalue(DATE()       )+','+; //1
+                                sr_cdbvalue(mdata_sis    )+','+; //2
+                                sr_cdbvalue(TIME()       )+','+; //3
+                                sr_cdbvalue('AUTORIZACA')+','+; //4
+                                sr_cdbvalue(mn_ped       )+','+; //5
+                                sr_cdbvalue(IF(mc_cli = NIL,'',mc_cli))+','+; //6
+                                sr_cdbvalue(maut_oper    )+','+; //7
+                                sr_cdbvalue(cod_operado  )+','+; //8
+                                sr_cdbvalue(IF(mdl = NIL,'',mdl))+','+;//9
+                                sr_cdbvalue(SUBSTR(IF(LEN(mcons_nivel) > 0,ALLTRIM(mcons_nivel[1,2]),'')+IF(mnum_pedido = NIL,'',' '+mnum_pedido),1,60))+','+;//10
+                                sr_cdbvalue(mcodaux      )+','+; //11
+                                sr_cdbvalue(LEFT(NETNAME(),15))+','+; //12
+                                sr_cdbvalue(IF(mnum_prod = NIL,'',mnum_prod))+','+; //13
+                                sr_cdbvalue(' ')+')',,.f.)
+
+                        sr_getconnection():exec("COMMIT",,.f.)
+                        *********************
+                        SELE(msel_sen);IF(mord_sen>0,ORDSETFOCUS(mord_sen),)
+                        *********************
+                        wvw_lclosewindow()
+                        RETURN .T.
+                ENDIF
+                atencao('Cod. Operador:'+maut_oper+' - Operador nao Autorizada !!!')
+                mcont ++
+                LOOP
+        ELSE
+                atencao('Senha nao Autorizada 2 !!!')
+                mcont ++
+                LOOP
+        ENDIF
+ENDDO
+wvw_lclosewindow()
+*********************
+SELE(msel_sen);IF(mord_sen>0,ORDSETFOCUS(mord_sen),)
+*********************
+RETURN .F.
+
+************************* F I M ***************************************************
+* SOLICITAR AUTORIZACAO
+***********************************************************************************
+
+FUNCTION soli_aut(sope,scli,sprod,smen,samb)
+
+LOCAL mcont:=1,mponto_sen:=0,cons_aut:={}
+mponto_sen := RECNO()
+cComm  := "UPDATE insopera SET sstatus = 'S',sope = "+sr_cdbvalue(sope)
+IF scli <> NIL
+        ccomm := ccomm + ",scliente = "+sr_cdbvalue(scli)
+ENDIF
+IF sprod <> NIL
+        ccomm := ccomm + ",sproduto = "+sr_cdbvalue(sprod)
+ENDIF
+IF samb <> NIL
+        ccomm := ccomm + ",sambiente = "+sr_cdbvalue(samb)
+ENDIF
+STRTRAN(smen,m_qp,' ')
+ccomm := ccomm + ",smensagem = "+sr_cdbvalue(SUBSTR(ALLTRIM(smen),1,150))
+ccomm := ccomm + " WHERE scod_op = "+sr_cdbvalue(sope)
+sr_getconnection():exec(ccomm,,.f.)
+sr_getconnection():exec('COMMIT',,.f.)
+op_tela(10,10,11,70,'Solicitacao de AUTORIZACAO')
+WHILE LASTKEY() <> 27
+        //GO mponto_sen
+        cons_aut := {}
+        sr_getconnection():exec("SELECT sstatus,scod_aut FROM insopera WHERE scod_op = "+sr_cdbvalue(sope),,.t.,@cons_aut)
+        limpa(00,00,00,70)
+        IF cons_aut[1,1] = 'S'
+                DEVPOS(00,00);DEVOUT('Aguarde solicitanto AUTORIZACAO '+REPLI('.',mcont))
+        ELSEIF cons_aut[1,1] = 'A'
+                DEVPOS(00,00);DEVOUT('Aguarde um momento  em  ANALISE '+REPLI('.',mcont))
+        ELSEIF cons_aut[1,1] = 'L'
+                mcod_aut := SUBSTR(cons_aut[1,2],1,6)
+                EXIT
+        ELSEIF cons_aut[1,1] = 'N'
+                mcod_aut := 'NEGATIVO'
+                EXIT
+        ENDIF
+        mcont ++
+        IF mcont = 5
+                mcont := 1
+        ENDIF
+        INKEY(.5)
+        IF LASTKEY() = 27
+                mcod_aut := 'NEGATIVO'
+                EXIT
+        ENDIF
+ENDDO
+cComm  := "UPDATE insopera SET sstatus = NULL,sope = NULL"
+ccomm := ccomm + ",scliente = NULL"
+ccomm := ccomm + ",sproduto = NULL"
+ccomm := ccomm + ",sambiente = NULL"
+ccomm := ccomm + ",smensagem = NULL"
+//ccomm := ccomm + ",scod_aut = NULL"
+ccomm := ccomm + " WHERE scod_op = "+sr_cdbvalue(sope)
+sr_getconnection():exec(ccomm,,.f.)
+sr_getconnection():exec('COMMIT',,.f.)
+wvw_lclosewindow()
+RETURN .T.
+
+************************* F I M ***************************************************
+* ?
+***********************************************************************************
+
+FUNCTION genkey(mcongen,nkey,narq)
+
+DO CASE
+        CASE nkey = K_UP
+                mcongen:UP()
+        CASE nkey = K_DOWN
+                mcongen:DOWN()
+        CASE nkey = K_PGUP
+                mcongen:PAGEUP()
+        CASE nkey = K_PGDN
+                mcongen:PAGEDOWN()
+        CASE nkey = K_LEFT
+                mcongen:LEFT()
+        CASE nkey = K_RIGHT
+                mcongen:RIGHT()
+        CASE nkey = K_CTRL_PGUP
+                mcongen:GOTOP()
+        CASE nkey = K_CTRL_PGDN
+                mcongen:GOBOTTOM()
+        CASE nkey = K_ALT_PGUP
+                mcongen:PAGEUP()
+                mcongen:PAGEUP()
+        CASE nkey = K_ALT_PGDN
+                mcongen:PAGEDOWN()
+                mcongen:PAGEDOWN()
+        CASE nkey = 286
+                CLEAR GETS
+                RETURN .T.
+        CASE nkey = 16
+                CLEAR GETS
+                RETURN .T.
+        CASE nkey = 281 .OR. nkey = 304
+                CLEAR GETS
+                RETURN .T.
+        CASE nkey = 274
+                CLEAR GETS
+                CLEAR GETS
+                RETURN .T.
+        CASE nkey = 290
+                CLEAR GETS
+                RETURN .T.
+        CASE nkey = ASC('i') .OR. nkey = ASC('I')
+                CLEAR GETS
+                RETURN .T.
+ENDCASE
+CLEAR GETS
+RETURN .F.
+
+************************* F I M ***************************************************
+* CABECALHO DA JANELA
+***********************************************************************************
+
+FUNCTION janela(li,cb,cab,p,lado)
+
+LOCAL mcor
+mcor := SETCOLOR()
+IF p = NIL
+        setcor(3,'*')
+ELSE
+        setcor(3)
+ENDIF
+IF lado = NIL
+        DEVPOS(li,cb-(LEN(cab)+2));DEVOUT(cab)
+ELSE
+        DEVPOS(li,cb+2);DEVOUT(cab)
+ENDIF
+SETCOLOR(mcor)
+RETURN NIL
+
+************************* F I M ***************************************************
+* FUNCAO PARA BLOQUEAR REGISTRO EM REDE
+***********************************************************************************
+
+FUNCTION bloqreg
+
+IF RLOCK()
+        RETURN (.T.)
+ENDIF
+mensagem('Registro Arq.:'+ALIAS(SELE())+' estar sendo acessado p/outro usuario !!!')
+
+WHILE LASTKEY() <> 27
+        IF DBRLOCK()
+                RETURN (.T.)
+        ENDIF
+ENDDO
+RETURN (.F.)
+
+************************* F I M ***************************************************
+* FECHA TELA
+***********************************************************************************
+
+FUNCTION fecha_tela
+
+wvw_lclosewindow()
+RETURN
+
+************************* F I M ***************************************************
+* VERIFICA A UF DO ESTADO
+***********************************************************************************
+
+FUNCTION v_uf(ve_uf)
+
+IF EMPTY(ve_uf) .OR. AT(ve_uf,'AC,AL,AP,AM,BA,CE,ES,GO,MA,MT,MS,MG,PA,PB,PR,PE,PI,RN,RS,RR,RO,RJ,SC,SE,SP,TO,DF,EX') > 0
+        RETURN .T.
+ELSE
+        RETURN .F.
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* SENHAS DISPONIVEIS
+***********************************************************************************
+
+FUNCTION sendisp(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, mcons_cat, i, mponto, m_vsenha
+
+op_tela(0,0,38,17,"Senhas Disponiveis",,'*')
+DEVPOS(0,3); DEVOUT('Senha: '+mpos)
+@ 1,0 TO 1,50
+mcons_mov := {}
+//sr_getconnection():exec("SELECT num_senha FROM sacmov WHERE cat = "+sr_cdbvalue(mcat),,.t.,@mcons_mov)
+sr_getconnection():exec("SELECT num_senha FROM sacmov ",,.t.,@mcons_mov)
+
+mcons_cat := {}
+sr_getconnection():exec("SELECT * FROM saccate WHERE cat = "+sr_cdbvalue(mcat),,.t.,@mcons_cat)
+
+IF LEN(mcons_cat) = 0
+        atencao('Essa categoria nao esta cadastrada !!!')
+        fecha_tela()
+        RETURN .F.
+ENDIF
+
+mponto:=0
+m_vsenha := {}
+//i:=mcons_cat[1,2]
+i:=0
+FOR i=mcons_cat[1,2] TO mcons_cat[1,3]
+        y:= machou:=0
+        FOR y=1 TO LEN(mcons_mov)
+                IF mcons_mov[y,1] = STRZERO(i,4)
+                        machou:=1
+                        EXIT
+                ENDIF
+        NEXT
+        IF machou = 1 .OR. STRZERO(i,4) = SEN1 .OR. STRZERO(i,4) = SEN2 .OR. STRZERO(i,4) = SEN3 .OR. STRZERO(i,4) = SEN4 .OR. STRZERO(i,4) = SEN5
+                LOOP
+        ENDIF
+        AADD(m_vsenha,STRZERO(i,4))
+NEXT
+
+mponto := ACHOICE(02,07,37,10,m_vsenha,,,mponto)
+wvw_lclosewindow()
+IF mponto = 0
+        RETURN .F.
+ENDIF
+
+IF mpos = 'SEN1'
+        sen1:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN2'
+        sen2:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN3'
+        sen3:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN4'
+        sen4:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN5'
+        sen5:=m_vsenha[mponto]
+ELSE
+        RETURN .T.
+ENDIF
+RETURN .T.
+
+************************* F I M ***************************************************
+* FUNCAO DE DESTRIBUICAO DE CONSULTA
+***********************************************************************************
+
+FUNCTION menu_cons
+
+IF READVAR() = 'SEN1' .OR. READVAR() = 'SEN2' .OR. READVAR() = 'SEN3' .OR. READVAR() = 'SEN4' .OR. READVAR() = 'SEN5'
+        sendisp(READVAR())
+ELSEIF READVAR() = 'MCOD_CAD'
+        f7_sen()
+ELSEIF READVAR() = 'MSEN'
+        conlib()
+ELSEIF READVAR() = 'MCAT'
+        siscate()
+ELSE
+        atencao('Modulo nao estar configurado para consulta entrar em contato com a HTI Sistemas...')
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* VER SENHAS RESERVADAS
+***********************************************************************************
+
+FUNCTION senrev(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, mcons_cat, i, mponto, m_vsenha
+
+op_tela(0,0,38,65,memp_resa+SPACE(10)+" *V E R   S E N H A S   R E S E R V A D A S* ",,'*')
+DEVPOS(0,2); DEVOUT('   Codigo  Nome do Puxador                 Senha  Categoria')
+@ 1,0 TO 1,65
+
+mcons_mov := {}
+sr_getconnection():exec("SELECT * FROM sacmov WHERE liberada = 'R'",,.t.,@mcons_mov)
+
+IF LEN(mcons_mov) = 0
+        atencao('Nao existe nenhuma senha reservada !!!')
+        fecha_tela()
+        RETURN
+ENDIF
+
+mponto:=0
+m_vsenha := {}
+//i:=mcons_cat[1,2]
+i:=0
+
+FOR i=1 TO LEN(mcons_mov)
+        AADD(m_vsenha,mcons_mov[i,1]+'    '+mcons_mov[i,2]+'  '+mcons_mov[i,12]+'   '+mcons_mov[i,9]+'  ')
+NEXT
+
+WHILE .T.
+        mponto := ACHOICE(02,05,37,53,m_vsenha,,,mponto)
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+        /*IF LASTKEY() = 13
+                IF SUBSTR(m_vsenha[mponto],LEN(m_vsenha[mponto]),1) = '*'
+                        m_vsenha[mponto]:= SUBSTR(m_vsenha[mponto],1,50)+' '
+                ELSE
+                        m_vsenha[mponto]:= SUBSTR(m_vsenha[mponto],1,50)+'*'
+                ENDIF
+        ENDIF*/
+ENDDO
+
+wvw_lclosewindow()
+
+RETURN .T.
+
+************************* F I M ***************************************************
+* FUNCAO P/CONSULTAR CLIENTES
+***********************************************************************************
+#include "inkey.ch"              // constantes de codigos das teclas
+
+FUNCTION f7_sen(mop)
+
+LOCAL f7lci,f7cci,f7lba,f7cba,f7msele,f7morde,mprg:='F7_CLI',;
+      oconsprod,ocolprod[4],f7i,f7nkey,f7opcao,mponto,mmens:='',c_cli:={},m_cli:={},;
+      point:=0,mpesquisa:=SPACE(50)
+
+f7lci := f7cci := 0
+f7lba := 25
+f7cba := 120
+
+f7msele := SELE()
+f7morde := INDEXORD()
+IF ! AbriArq('sacsenha','sacsn');RETURN NIL;ENDIF
+
+*************
+SELE('sacsn')
+*************
+setcor(1)
+op_tela(00,01,38,120,memp_resa+SPACE(40)+' CONSULTA DE VAQUEIRO ',,'*')
+oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'sacsn')
+
+mcolor := "B/W*+ , W+/R+ , W*/B , R+/W+ , W*/W+ , RJ/W , W/B , R/N , B+*/W , RW*/W , N+*/W, BG+*/W, RG+*/W"
+oconsprod:colorspec := mcolor
+
+oconsprod:HEADSEP := CHR(196)
+oconsprod:COLSEP  := CHR(179)
+oconsprod:gotopblock({|| dbGoTop()})
+oconsprod:gobottomblock({|| dbGoBottom()})
+***brw:skipblock({|_1| MOV_PTR(_1)})
+oconsprod:skipBlock:= {|nSkip| DbSkipper(nSkip) }
+
+ocolprod[1] := TBCOLUMNNEW('Cod. ',{||sacsn->cod_cad})
+ocolprod[2] := TBCOLUMNNEW('Nome do Puxador',{||sacsn->nom_pux})
+ocolprod[3] := TBCOLUMNNEW('Representacao',{||sacsn->rep})
+ocolprod[4] := TBCOLUMNNEW('Categoria',{||sacsn->cat})
+f7i:=0
+FOR f7i=1 TO LEN(ocolprod)
+        oconsprod:ADDCOLUMN(ocolprod[f7i])
+NEXT
+WVW_SetMousePos(,00,00)
+WVW_SetMouseMove(,.F.)
+
+
+WHILE .T.
+        exibi_prg('F7_SEN')
+        IF mop = '*'
+                mensagem('<P>esquisa - <ESC>Retornar')
+        ELSE
+                mensagem('<P>esquisa - <ENTER>Confirma - <ESC>Retornar')
+        ENDIF
+        f7nkey := 0
+        WHILE f7nkey == 0
+                oconsprod:FORCESTABLE()
+                botao(f7lba+1,f7cci,48,f7cba)
+                setcor(3)
+                DEVPOS(f7lba+2,f7cci+1);DEVOUT('Cavalo do Puxador.....:')
+                DEVPOS(f7lba+4,f7cci+1);DEVOUT('Nome do Esteira.......:')
+                DEVPOS(f7lba+5,f7cci+1);DEVOUT('Cavalo do Esteira.....:')
+                DEVPOS(f7lba+7,f7cci+1);DEVOUT('Cidade................:')
+                DEVPOS(f7lba+8,f7cci+1);DEVOUT('Estado................:')
+                DEVPOS(f7lba+10,f7cci+1);DEVOUT('Telefone p/ contato...:')
+                DEVPOS(f7lba+11,f7cci+1);DEVOUT('E-mail p/ contato.....:')
+                setcor(1)
+                DEVPOS(f7lba+2,f7cci+25);DEVOUT(sacsn->cav_pux)
+                DEVPOS(f7lba+4,f7cci+25);DEVOUT(sacsn->nom_est)
+                DEVPOS(f7lba+5,f7cci+25);DEVOUT(sacsn->cav_est)
+                DEVPOS(f7lba+7,f7cci+25);DEVOUT(sacsn->cidade)
+                DEVPOS(f7lba+8,f7cci+25);DEVOUT(sacsn->estado)
+                DEVPOS(f7lba+10,f7cci+25);DEVOUT(sacsn->fone)
+                DEVPOS(f7lba+11,f7cci+25);DEVOUTPICT(sacsn->email)
+
+                limpa(39,80,47,97)
+                botao(39,80,47,97)
+                setcor(1)
+                f7nkey := INKEY(0)
+        ENDDO
+        IF f7nkey == K_ESC
+                EXIT
+        ELSEIF f7nkey = 112 .OR. f7nkey = 80
+                op_tela(00,01,38,120,memp_resa+SPACE(40)+' PESQUISA DE VAQUEIRO ',,'*')
+                CLEAR GETS
+                WHILE .T.
+                        limpa(0,0,38,120)
+                        mensagem('Digite a descricao ou *descricao p/Pesquisa qualquer lugar da descricao')
+                        setcor(1)
+                        DEVPOS(01,01);DEVOUT('Pesquisa Geral:')
+                        setcor(3)
+                        @ 02,00 TO 02,120
+                        DEVPOS(03,01);DEVOUT('Cod.   Nome do Puxador                  Representacao                                                  Categoria')
+                        @ 04,00 TO 04,120
+                        @ 42,00 TO 42,120
+                        DEVPOS(39,01);DEVOUT('Total de Vaqueiros:')
+                        DEVPOS(39,27);DEVOUT('Tempo da Pesquisa:')
+                        setcor(1)
+                        @ 01,17 GET mpesquisa PICT '@!KS50'
+                        READ
+                        IF LASTKEY() = 27
+                                CLEAR GETS
+                                EXIT
+                        ENDIF
+                        IF EMPTY(mpesquisa)
+                                LOOP
+                        ENDIF
+                        mhoras := TIME()
+                        cComm  := "SELECT * FROM sacsenha WHERE cod_cad IS NOT NULL"
+                        IF ! EMPTY(mpesquisa)
+                                ccomm := ccomm + " AND nom_pux LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR cav_pux LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR nom_est LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR cav_est LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR cidade LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR estado LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR fone LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR email LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR rep LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR cat LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                                ccomm := ccomm + " OR cod_cad LIKE "+sr_cdbvalue('%'+ALLTRIM(mpesquisa)+'%')
+                        ENDIF
+                        ccomm := ccomm + " ORDER BY nom_pux"
+                        cons_m := {}
+                        sr_getconnection():exec(ccomm,,.t.,@cons_m)
+                        IF LEN(cons_m) = 0
+                                atencao('Nao foi encontrado nenhum VAQUEIRO ...')
+                                LOOP
+                        ENDIF
+                        m_prod := {}
+                        m_pos  := {}
+                        point  := i := 0
+                        DEVPOS(39,20);DEVOUT(STRZERO(LEN(cons_m),5))
+                        DEVPOS(39,46);DEVOUT(ELAPTIME(mhoras,TIME()))
+                        FOR i = 1 TO LEN(cons_m)
+                                AADD(m_prod,' '+cons_m[i,1];
+                                           +'   '+cons_m[i,2];
+                                           +'   '+cons_m[i,6];
+                                           +'   '+cons_m[i,9])
+                                AADD(m_pos,cons_m[i,14])
+                        NEXT
+                        point := ACHOICE(05,0,38,119,m_prod,,,point)
+                        DO CASE
+                                CASE LASTKEY()=27
+                                        LOOP
+                                CASE LASTKEY() = 13
+                                        *************
+                                        SELE('sacsn')
+                                        *************
+                                        GO m_pos[point]
+                                        mcod_cad:=sacsn->cod_cad
+                                        EXIT
+                        ENDCASE
+                ENDDO
+                wvw_lclosewindow()
+                oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'sacsn')
+                oconsprod:colorspec :=mcolor
+                ocolprod[1] := TBCOLUMNNEW('Cod. Cadastro',{||sacsn->cod_cad})
+                ocolprod[2] := TBCOLUMNNEW('Nome do Puxador',{||sacsn->nom_pux})
+                ocolprod[3] := TBCOLUMNNEW('Representacao',{||sacsn->rep})
+                ocolprod[4] := TBCOLUMNNEW('Categoria',{||sacsn->cat})
+                f7i:=0
+                FOR f7i=1 TO LEN(ocolprod)
+                        oconsprod:ADDCOLUMN(ocolprod[f7i])
+                NEXT
+                oconsprod:HEADSEP := CHR(196)
+                oconsprod:COLSEP := CHR(179)
+                oconsprod:FORCESTABLE()
+        ELSEIF f7nkey == K_ENTER
+                mcod_cad:=VAL(sacsn->cod_cad)
+                SELE(f7msele);IF(f7morde>0,ORDSETFOCUS(f7morde),)
+                WVW_SetMouseMove(,.T.)
+                wvw_lclosewindow()
+                RETURN
+        ELSE
+                IF genkey(oconsprod,f7nkey,'sacsn')
+                        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'sacsn')
+                        oconsprod:colorspec :=mcolor
+                        ocolprod[1] := TBCOLUMNNEW('Cod. Cadastro',{||sacsn->cod_cad})
+                        ocolprod[2] := TBCOLUMNNEW('Nome do Puxador',{||sacsn->nom_pux})
+                        ocolprod[3] := TBCOLUMNNEW('Representacao',{||sacsn->rep})
+                        ocolprod[4] := TBCOLUMNNEW('Categoria',{||sacsn->cat})
+                        f7i:=0
+                        FOR f7i=1 TO LEN(ocolprod)
+                                oconsprod:ADDCOLUMN(ocolprod[f7i])
+                        NEXT
+                        oconsprod:HEADSEP := CHR(196)
+                        oconsprod:COLSEP := CHR(179)
+                        oconsprod:FORCESTABLE()
+                ENDIF
+        ENDIF
+END
+SELE(f7msele);IF(f7morde>0,ORDSETFOCUS(f7morde),)
+RELEASE f7tela,f7tela1,f7lci,f7cci,f7lba,f7cba,f7msele,f7morde,f7men,oconsprod,ocolprod[8],f7i,f7nkey,f7opcao,;
+        mcompras:=0
+WVW_SetMouseMove(,.T.)
+wvw_lclosewindow()
+IF f7nkey == K_ESC
+        RETURN NIL
+ELSE
+        CLEAR GETS
+        RETURN
+ENDIF
+RETURN NIL
+************************* F I M ***************************************************
+* CONSULTAR SENHAS RESERVADAS PARA RECEBER
+***********************************************************************************
+
+FUNCTION revdisp(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, mcons_cat, i, mponto, m_vsenha
+
+op_tela(15,0,33,17,"Senhas Reservadas",,'*')
+DEVPOS(0,0); DEVOUT('Senhas Reservadas: ')
+@ 1,0 TO 1,50
+mcons_mov := {}
+sr_getconnection():exec("SELECT num_senha FROM sacmov WHERE liberada = 'R' AND cod_cad = "+sr_cdbvalue(mcod_cad),,.t.,@mcons_mov)
+//sr_getconnection():exec("SELECT num_senha FROM sacmov ",,.t.,@mcons_mov)
+
+mcons_cat := {}
+sr_getconnection():exec("SELECT * FROM saccate WHERE cat = "+sr_cdbvalue(mcat),,.t.,@mcons_cat)
+
+IF LEN(mcons_cat) = 0
+        atencao('Essa categoria nao esta cadastrada !!!')
+        fecha_tela()
+        RETURN .F.
+ENDIF
+
+mponto:=0
+m_vsenha := {}
+//i:=mcons_cat[1,2]
+i:=0
+FOR i=1 TO LEN(mcons_mov)
+        IF mcons_mov[i,1] = SEN1 .OR. mcons_mov[i,1] = SEN2 .OR. mcons_mov[i,1] = SEN3 .OR. mcons_mov[i,1] = SEN4 .OR. mcons_mov[i,1] = SEN5
+                LOOP
+        ENDIF
+        AADD(m_vsenha,mcons_mov[i,1])
+NEXT
+
+mponto := ACHOICE(02,07,37,10,m_vsenha,,,mponto)
+wvw_lclosewindow()
+IF mponto = 0
+        RETURN .F.
+ENDIF
+
+IF mpos = 'SEN1'
+        sen1:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN2'
+        sen2:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN3'
+        sen3:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN4'
+        sen4:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN5'
+        sen5:=m_vsenha[mponto]
+ELSE
+        RETURN .T.
+ENDIF
+RETURN .T.
+
+************************* F I M ***************************************************
+* CONSULTAR SENHAS CONFIRMADAS
+***********************************************************************************
+
+FUNCTION senconf(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, mcons_cat, i, mponto, m_vsenha
+
+op_tela(15,0,33,18,"Senhas Confirmadas",,'*')
+DEVPOS(0,0); DEVOUT('Senhas Confirmadas: ')
+@ 1,0 TO 1,50
+mcons_mov := {}
+sr_getconnection():exec("SELECT num_senha,liberada FROM sacmov WHERE (liberada = 'S' OR liberada = 'R') AND cod_cad = "+sr_cdbvalue(mcod_cad),,.t.,@mcons_mov)
+//sr_getconnection():exec("SELECT num_senha FROM sacmov ",,.t.,@mcons_mov)
+
+mcons_cat := {}
+sr_getconnection():exec("SELECT * FROM saccate WHERE cat = "+sr_cdbvalue(mcat),,.t.,@mcons_cat)
+
+mponto:=0
+m_vsenha := {}
+//i:=mcons_cat[1,2]
+i:=0
+FOR i=1 TO LEN(mcons_mov)
+        IF mcons_mov[i,1] = SEN1 .OR. mcons_mov[i,1] = SEN2 .OR. mcons_mov[i,1] = SEN3 .OR. mcons_mov[i,1] = SEN4 .OR. mcons_mov[i,1] = SEN5
+                LOOP
+        ENDIF
+        AADD(m_vsenha,mcons_mov[i,1] + ' ' + mcons_mov[i,2])
+NEXT
+
+mponto := ACHOICE(02,07,37,12,m_vsenha,,,mponto)
+wvw_lclosewindow()
+IF mponto = 0
+        RETURN .F.
+ENDIF
+
+IF mpos = 'SEN1'
+        sen1:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN2'
+        sen2:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN3'
+        sen3:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN4'
+        sen4:=m_vsenha[mponto]
+ELSEIF mpos = 'SEN5'
+        sen5:=m_vsenha[mponto]
+ELSE
+        RETURN .T.
+ENDIF
+RETURN .T.
+
+************************* F I M ***************************************************
+* VER SENHAS LIBERADAS
+***********************************************************************************
+
+FUNCTION conlib(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, m_ponto, i, mponto, m_vsenha
+
+op_tela(0,0,38,65,memp_resa+SPACE(10)+" *C O N S U L T A   S E N H A S   L I B E R A D A S* ",,'*')
+DEVPOS(0,2); DEVOUT('   Codigo  Nome do Puxador                 Senha  Categoria')
+@ 1,0 TO 1,65
+
+mcons_mov := {}
+sr_getconnection():exec("SELECT * FROM sacmov WHERE liberada = 'S' AND (cat = "+sr_cdbvalue(mcat)+" OR cat = "+sr_cdbvalue(mcat2)+") AND (rodizio = '    ' OR rodizio IS NULL)",,.t.,@mcons_mov)
+
+IF LEN(mcons_mov) = 0
+        atencao('Nao existe nenhuma senha liberada para esta categoria....')
+        msen:= 0
+        wvw_lclosewindow()
+        RETURN .T.
+ENDIF
+
+mponto:=0
+m_vsenha := {}
+m_ponto := {}
+i:= 0
+FOR i=1 TO LEN(mcons_mov)
+        y:= machou:= 0
+        FOR y=1 TO LEN(mcons_inso)
+                IF mcons_inso[y,12] = mcons_mov[i,12]
+                        machou:= 1
+                ENDIF
+        NEXT
+        IF machou = 0
+                AADD(m_vsenha,mcons_mov[i,1]+'    '+mcons_mov[i,2]+'  '+mcons_mov[i,12]+'   '+mcons_mov[i,9]+'  ')
+                AADD(m_ponto,mcons_mov[i,12])
+        ENDIF
+NEXT
+
+WHILE .T.
+        mponto := ACHOICE(02,05,37,53,m_vsenha,,,mponto)
+        IF mponto = 0 .OR. LASTKEY() = 27
+                EXIT
+        ENDIF
+        IF LASTKEY() = 13
+                msen:= VAL(m_ponto[mponto])
+                EXIT
+        ENDIF
+ENDDO
+wvw_lclosewindow()
+
+RETURN .T.
+
+
+
+************************* F I M ***************************************************
+#INCLUDE "wingdi.ch"
+#INCLUDE "winuser.ch"
+FUNCTION SUB_BANNER(LIN,COL,STRING,VCOR)
+
+//Wvw_DrawLabel( ,lin,col, string,2,0 , rgb(0,0,255), rgb(198,198,198), 'Arial Black',30,35 , , , , , )
+DEVPOS(lin,col);DEVOUT("")
+IF vcor = NIL
+        //WVW_DrawLabel(,lin,col,string,,,,, 'Arial Black',80,40,,,,,)
+        WVW_DrawLabel(,lin,col,string,,,,, 'times new roman',80,40,,,,,)
+ELSE
+        WVW_DrawLabel(,lin,col,string,,,240,, 'Arial Black',80,40,,,,,)
+ENDIF
+RETURN NIL
+
+************************* F I M ***************************************************
+* VER CATEGORIA
+***********************************************************************************
+FUNCTION ver_cat(mcate,mvf)
+
+IF EMPTY(mcate)
+        RETURN .T.
+ENDIF
+
+mcons_cat:={}
+sr_getconnection():exec("SELECT * FROM saccate WHERE cat = "+sr_cdbvalue(mcate),,.t.,@mcons_cat)
+IF LEN(mcons_cat) = 0
+        IF mvf = NIL
+                RETURN ""
+        ELSE
+                RETURN .F.
+        ENDIF
+ELSE
+        mqtdboi:= mcons_cat[1,4]
+        IF mvf = NIL
+                RETURN mcons_cat[1,10]
+        ELSE
+                RETURN .T.
+        ENDIF
+ENDIF
+RETURN NIL
+
+
+************************* F I M ***************************************************
+FUNCTION verrod(mpos)
+
+LOCAL mprg:='SISFUNC',mcons_mov, mcons_cat, i, mponto, m_vsenha
+
+op_tela(0,0,38,65,memp_resa+SPACE(10)+" *V E R   R O D I Z I O S* ",,'*')
+DEVPOS(0,2); DEVOUT('   Rodizio  Categoria            Qtd. Senhas')
+@ 1,0 TO 1,65
+//WHERE liberada = 'R'
+mcons_mov := {}
+sr_getconnection():exec("SELECT rodizio,cat,count(*) FROM sacmov WHERE rodizio IS NOT NULL group BY rodizio,rodizio,cat,cat",,.t.,@mcons_mov)
+IF LEN(mcons_mov) = 0
+        atencao('Nao existe nenhum rodizio !!!')
+        fecha_tela()
+        RETURN
+ENDIF
+
+mponto:=0
+m_vsenha := {}
+//i:=mcons_cat[1,2]
+i:=0
+
+FOR i=1 TO LEN(mcons_mov)
+        AADD(m_vsenha,mcons_mov[i,1]+'     '+ver_cat(mcons_mov[i,2])+' '+STRZERO(mcons_mov[i,3],4))
+NEXT
+
+WHILE .T.
+        mponto := ACHOICE(02,05,37,53,m_vsenha,,,mponto)
+        IF LASTKEY() = 27
+                EXIT
+        ENDIF
+        /*IF LASTKEY() = 13
+                IF SUBSTR(m_vsenha[mponto],LEN(m_vsenha[mponto]),1) = '*'
+                        m_vsenha[mponto]:= SUBSTR(m_vsenha[mponto],1,50)+' '
+                ELSE
+                        m_vsenha[mponto]:= SUBSTR(m_vsenha[mponto],1,50)+'*'
+                ENDIF
+        ENDIF*/
+ENDDO
+
+wvw_lclosewindow()
+
+RETURN .T.
+
+************************* F I M ***************************************************
+* FUNCAO P/CONSULTAR CATEGORIA
+***********************************************************************************
+#include "inkey.ch"              // constantes de codigos das teclas
+
+FUNCTION f7_cate(mop)
+
+LOCAL f7lci,f7cci,f7lba,f7cba,f7msele,f7morde,mprg:='F7_CAT',;
+      oconsprod,ocolprod[2],f7i,f7nkey,f7opcao,mponto,mmens:='',;
+      point:=0
+
+
+f7lci := f7cci := 0
+f7lba := 25
+f7cba := 120
+f7msele := SELE()
+f7morde := INDEXORD()
+IF ! AbriArq('saccate','sacsn');RETURN NIL;ENDIF
+*************
+SELE('sacsn')
+*************
+setcor(1)
+op_tela(00,01,38,120,memp_resa+SPACE(40)+' CONSULTA DE CATEGORIA ',,'*')
+oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'sacsn')
+
+mcolor := "B/W*+ , W+/R+ , W*/B , R+/W+ , W*/W+ , RJ/W , W/B , R/N , B+*/W , RW*/W , N+*/W, BG+*/W, RG+*/W"
+oconsprod:colorspec := mcolor
+
+oconsprod:HEADSEP := CHR(196)
+oconsprod:COLSEP  := CHR(179)
+oconsprod:gotopblock({|| dbGoTop()})
+oconsprod:gobottomblock({|| dbGoBottom()})
+***brw:skipblock({|_1| MOV_PTR(_1)})
+oconsprod:skipBlock:= {|nSkip| DbSkipper(nSkip) }
+
+ocolprod[1] := TBCOLUMNNEW('Categoria',{||sacsn->cat})
+ocolprod[2] := TBCOLUMNNEW('Descricao',{||sacsn->descri})
+f7i:=0
+FOR f7i=1 TO LEN(ocolprod)
+        oconsprod:ADDCOLUMN(ocolprod[f7i])
+NEXT
+WVW_SetMousePos(,00,00)
+WVW_SetMouseMove(,.F.)
+
+atencao('qw')
+
+WHILE .T.
+        exibi_prg('F7_CATE')
+        IF mop = '*'
+                mensagem('<ESC>Retornar')
+        ELSE
+                mensagem('<ENTER>Confirma - <ESC>Retornar')
+        ENDIF
+        IF f7nkey == K_ESC
+                EXIT
+        ELSEIF f7nkey == K_ENTER
+                mcat:=VAL(sacsn->cat)
+                SELE(f7msele);IF(f7morde>0,ORDSETFOCUS(f7morde),)
+                WVW_SetMouseMove(,.T.)
+                wvw_lclosewindow()
+                RETURN
+        ELSE
+                IF genkey(oconsprod,f7nkey,'sacsn')
+                        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'sacsn')
+                        oconsprod:colorspec :=mcolor
+                        ocolprod[1] := TBCOLUMNNEW('Categoria',{||sacsn->cat})
+                        ocolprod[2] := TBCOLUMNNEW('Descricao',{||sacsn->descri})
+                        f7i:=0
+                        FOR f7i=1 TO LEN(ocolprod)
+                                oconsprod:ADDCOLUMN(ocolprod[f7i])
+                        NEXT
+                        oconsprod:HEADSEP := CHR(196)
+                        oconsprod:COLSEP := CHR(179)
+                        oconsprod:FORCESTABLE()
+                ENDIF
+        ENDIF
+END
+SELE(f7msele);IF(f7morde>0,ORDSETFOCUS(f7morde),)
+RELEASE f7tela,f7tela1,f7lci,f7cci,f7lba,f7cba,f7msele,f7morde,f7men,oconsprod,ocolprod[8],f7i,f7nkey,f7opcao,;
+        mcompras:=0
+WVW_SetMouseMove(,.T.)
+wvw_lclosewindow()
+IF f7nkey == K_ESC
+        RETURN NIL
+ELSE
+        CLEAR GETS
+        RETURN //mcod_cad
+ENDIF
+RETURN NIL
+************************* F I M ***************************************************
+* FUNCAO P/ ALTERAR SENHA NA COMISSÃO
+***********************************************************************************
+#include "inkey.ch"
+
+FUNCTION alt_senha
+
+LOCAL mprg:='alt_senha',mcons_rod := {},mnum_sen:=0
+setcor(1)
+op_tela(00,00,16,80,' ALTERACAO DE SENHA ',,'*')
+WHILE .T.
+
+        setcor(1)
+        DEVPOS(1,1);DEVOUT('SENHA............:')
+        DEVPOS(2,1);DEVOUT('Nome do Puxador..:')
+        DEVPOS(3,1);DEVOUT('Cavalo do Puxador:')
+        DEVPOS(4,1);DEVOUT('Nome do Esteira..:')
+        DEVPOS(5,1);DEVOUT('Cavalo do Esteira:')
+        DEVPOS(6,1);DEVOUT('Representacao....:')
+        DEVPOS(7,1);DEVOUT('Cidade...........:')
+        DEVPOS(8,1);DEVOUT('Estado...........:')
+        @ 9,0 TO 9,80
+        DEVPOS(10,1);DEVOUT('BOI 1............:')
+        DEVPOS(11,1);DEVOUT('BOI 2............:')
+        DEVPOS(12,1);DEVOUT('BOI 3............:')
+        DEVPOS(13,1);DEVOUT('BOI 4............:')
+        DEVPOS(14,1);DEVOUT('BOI 5............:')
+        DEVPOS(15,1);DEVOUT('BOI 6............:')
+        setcor(3)
+        mnum_sen:=0
+        @ 1,20 GET mnum_sen PICT '9999'
+        READ
+        IF LASTKEY() = 27
+                fecha_tela()
+                RETURN
+        ENDIF
+        mcons_rod := {}
+        sr_getconnection():exec("SELECT * FROM sacmov WHERE num_senha = "+sr_cdbvalue(STRZERO(mnum_sen,4)),,.t.,@mcons_rod)
+        IF LEN(mcons_rod) = 0
+                atencao('Senha nao encontrada !!!')
+                LOOP
+        ENDIF
+        DEVPOS(2,20);DEVOUT(mcons_rod[1,2])
+        DEVPOS(3,20);DEVOUT(mcons_rod[1,3])
+        DEVPOS(4,20);DEVOUT(mcons_rod[1,4])
+        DEVPOS(5,20);DEVOUT(mcons_rod[1,5])
+        DEVPOS(6,20);DEVOUT(mcons_rod[1,6])
+        DEVPOS(7,20);DEVOUT(mcons_rod[1,7])
+        DEVPOS(8,20);DEVOUT(mcons_rod[1,8])
+        setcor(1)
+        mboi1:= mcons_rod[1,14]
+        mboi2:= mcons_rod[1,15]
+        mboi3:= mcons_rod[1,16]
+        mboi4:= mcons_rod[1,17]
+        mboi5:= mcons_rod[1,18]
+        mboi6:= mcons_rod[1,19]
+
+        @ 10,20 GET mboi1 PICT '@!' VALID mboi1 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        @ 11,20 GET mboi2 PICT '@!' VALID mboi2 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        @ 12,20 GET mboi3 PICT '@!' VALID mboi3 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        @ 13,20 GET mboi4 PICT '@!' VALID mboi4 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        @ 14,20 GET mboi5 PICT '@!' VALID mboi5 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        @ 15,20 GET mboi6 PICT '@!' VALID mboi6 $ 'V,C,Z,R,T, ' .AND. LIM_GET() WHEN men_get(0,0,'[V]aleu Boi   [C]Valeu Boi sem calda   [Z]ero   [R]etorno   [T]elevisão')
+        READ
+
+        opcao := op_simnao('S','Confirma o resultado dos bois:')
+        IF opcao = 'N' .OR. LASTKEY() = 27
+                LOOP
+        ENDIF
+        sr_getconnection():exec('UPDATE sacmov SET boi1 = '+sr_cdbvalue(mboi1)+',boi2 = '+sr_cdbvalue(mboi2)+',boi3 = '+sr_cdbvalue(mboi3)+',boi4 = '+sr_cdbvalue(mboi4)+',boi5 = '+sr_cdbvalue(mboi5)+',boi6 = '+sr_cdbvalue(mboi6)+' WHERE num_senha = '+sr_cdbvalue(STRZERO(mnum_sen,4)),,.f.)
+        sr_getconnection():exec("COMMIT",,.f.)
+
+        mcons_mov := {}
+        sr_getconnection():exec("SELECT * FROM sacmov WHERE rodizio = "+sr_cdbvalue(STRZERO(mrod,4))+" AND (cat = "+sr_cdbvalue(mcat)+" OR cat = "+sr_cdbvalue(mcat2)+') ORDER BY num_senha',,.t.,@mcons_mov)
+
+        IF LEN(mcons_mov) = 0
+                atencao('Nao existe nenhuma senha neste rodizio !!!')
+                fecha_tela()
+                RETURN
+        ENDIF
+
+        alb_msele := SELE()
+        alb_morde := INDEXORD()
+        USE 'sacmov' ALIAS 'mov' EXCLUSIVE NEW VIA 'DBFCDX'
+        *************
+        SELE('mov')
+        BLOQREG()
+        ZAP
+        DBUNLOCK()
+        *************
+        i := 0
+        FOR i = 1 TO LEN(mcons_mov)
+                ADIREG()
+                mov->cod_cad  := mcons_mov[i,1]
+                mov->nom_pux  := mcons_mov[i,2]
+                mov->cav_pux  := mcons_mov[i,3]
+                mov->nom_est  := mcons_mov[i,4]
+                mov->cav_est  := mcons_mov[i,5]
+                mov->rep      := mcons_mov[i,6]
+                mov->cidade   := mcons_mov[i,7]
+                mov->estado   := mcons_mov[i,8]
+                mov->cat      := mcons_mov[i,9]
+                mov->data     := mcons_mov[i,10]
+                mov->hora     := mcons_mov[i,11]
+                mov->num_senha:= mcons_mov[i,12]
+                mov->rodizio  := mcons_mov[i,13]
+                mov->boi1     := mcons_mov[i,14]
+                mov->boi2     := mcons_mov[i,15]
+                mov->boi3     := mcons_mov[i,16]
+                mov->boi4     := mcons_mov[i,17]
+                mov->boi5     := mcons_mov[i,18]
+                mov->boi6     := mcons_mov[i,19]
+                mov->liberada := mcons_mov[i,20]
+                mov->valor    := mcons_mov[i,21]
+        NEXT
+        DBCOMMIT()
+        DBUNLOCK()
+        ********************
+        SELE('mov');GO TOP
+        ********************
+        /*
+        oconsprod := TBROWSEDB(f7lci,f7cci,f7lba-1,f7cba,'mov')
+        oconsprod:colorspec :=mcolor
+        ocolprod[1] := TBCOLUMNNEW('Senha',{||mov->num_senha})
+        ocolprod[2] := TBCOLUMNNEW('Nome do Puxador',{||mov->nom_pux})
+        ocolprod[3] := TBCOLUMNNEW('Categoria',{||ver_cat(mov->cat)})
+        ocolprod[4] := TBCOLUMNNEW('Representacao',{||mov->rep})
+        f7i:=0
+        FOR f7i=1 TO LEN(ocolprod)
+                oconsprod:ADDCOLUMN(ocolprod[f7i])
+        NEXT
+        oconsprod:HEADSEP := CHR(196)
+        oconsprod:COLSEP := CHR(179)
+        oconsprod:FORCESTABLE()
+        */
+
+ENDDO
